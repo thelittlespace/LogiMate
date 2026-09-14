@@ -1,4 +1,4 @@
-# LogiMate Build 019 reproducible Windows release bootstrap.
+# LogiMate Build 020 reproducible Windows release bootstrap.
 # This script is intentionally compatible with Windows PowerShell 5.1 so it can
 # bootstrap the pinned release toolchain without changing machine-wide installs.
 [CmdletBinding()]
@@ -29,7 +29,7 @@ $Cache = Join-Path $Tools 'cache'
 $GoHome = Join-Path $Tools 'go'
 $PwshHome = Join-Path $Tools 'pwsh'
 $ReportDir = Join-Path $Root 'release-gate'
-$Transcript = Join-Path $ReportDir 'Build019-Go1.27.1-Release-Gate.txt'
+$Transcript = Join-Path $ReportDir 'Build020-Go1.27.1-Release-Gate.txt'
 
 function Write-Step([string]$Text) {
     Write-Host "`n==> $Text" -ForegroundColor Cyan
@@ -142,7 +142,8 @@ Set-Location '$escapedRoot'
 `$env:GOROOT='$escapedGoRoot'
 `$env:PATH=(Join-Path '$escapedGoRoot' 'bin') + ';' + `$env:PATH
 `$env:GOTOOLCHAIN='local'
-# Build 019 is an unsigned alpha release unless a later signing-specific pipeline is used.
+$env:GOFLAGS='-buildvcs=false'
+# Build 020 is an unsigned alpha release unless a later signing-specific pipeline is used.
 # Clear ambient signing variables so local machine state cannot change reproducibility.
 `$env:LOGIMATE_SIGN_THUMBPRINT=''
 `$env:LOGIMATE_TIMESTAMP_URL=''
@@ -194,6 +195,7 @@ Set-Location '$escapedSource'
 `$env:GOROOT='$escapedGoRoot'
 `$env:PATH=(Join-Path '$escapedGoRoot' 'bin') + ';' + `$env:PATH
 `$env:GOTOOLCHAIN='local'
+$env:GOFLAGS='-buildvcs=false'
 `$env:CGO_ENABLED='0'
 `$env:GOOS='windows'
 `$env:GOARCH='amd64'
@@ -225,7 +227,7 @@ if ($att.toolchain.powerShellVersion -ne '7.6.6') { throw "Attestation did not r
 Write-Step 'Write local release gate transcript'
 $hashLines = Get-Content (Join-Path $Root 'dist\SHA256SUMS.txt')
 @(
-    'LogiMate Build 019 release gate',
+    'LogiMate Build 020 release gate',
     "Visible version: $version",
     "Internal build: $build",
     "Go: $goVersionText",
@@ -241,11 +243,11 @@ $hashLines = Get-Content (Join-Path $Root 'dist\SHA256SUMS.txt')
     'Release package hashes:',
     $hashLines
 ) | Set-Content -LiteralPath $Transcript -Encoding UTF8
-Copy-Item -LiteralPath $Transcript -Destination (Join-Path $Root 'dist\Build019-Go1.27.1-Release-Gate.txt') -Force
+Copy-Item -LiteralPath $Transcript -Destination (Join-Path $Root 'dist\Build020-Go1.27.1-Release-Gate.txt') -Force
 
 $verificationPath = Join-Path $Root 'dist\PACKAGE_VERIFICATION.txt'
 @(
-    'LogiMate 0.0.1-alpha · Build 019',
+    'LogiMate 0.0.1-alpha · Build 020',
     'Package verification',
     '',
     'Go 1.27.1 exact toolchain: PASS',
@@ -265,14 +267,14 @@ $verificationPath = Join-Path $Root 'dist\PACKAGE_VERIFICATION.txt'
     '',
     "Application SHA-256: $firstApp",
     "Installer SHA-256: $firstInstaller",
-    'Both source-rebuilt files are byte-identical to the Build 019 release binaries.'
+    'Both source-rebuilt files are byte-identical to the Build 020 release binaries.'
 ) | Set-Content -LiteralPath $verificationPath -Encoding UTF8
 
-$completionPath = Join-Path $Root 'dist\LogiMate-0.0.1-alpha-Build019-Completion-Report.md'
+$completionPath = Join-Path $Root 'dist\LogiMate-0.0.1-alpha-Build020-Completion-Report.md'
 @(
-    '# LogiMate 0.0.1-alpha · Build 019 — completion report',
+    '# LogiMate 0.0.1-alpha · Build 020 — completion report',
     '',
-    '## Completed in Build 019',
+    '## Completed in Build 020',
     '',
     '- complete re-audit of the verified Build 017 publication-candidate baseline',
     '- automatic Memory Integrity/HVCI mutation removed; status opens Windows Security only',
@@ -305,10 +307,10 @@ $completionPath = Join-Path $Root 'dist\LogiMate-0.0.1-alpha-Build019-Completion
     '- final clean-machine/manual Windows UI matrix where hardware or human observation is required',
     '- Authenticode publisher signing unless a real signing identity is configured',
     '',
-    'Build 019 remains `0.0.1-alpha` and is published as a prerelease, not a stable fully certified release.'
+    'Build 020 remains `0.0.1-alpha` and is published as a prerelease, not a stable fully certified release.'
 ) | Set-Content -LiteralPath $completionPath -Encoding UTF8
 
-$releaseZip = Join-Path $Root 'LogiMate-0.0.1-alpha-Build019-Go1.27.1-Release.zip'
+$releaseZip = Join-Path $Root 'LogiMate-0.0.1-alpha-Build020-Go1.27.1-Release.zip'
 if (Test-Path $releaseZip) { Remove-Item $releaseZip -Force }
 $releaseStage = Join-Path $ReportDir 'release-package'
 Reset-Directory $releaseStage
@@ -335,3 +337,4 @@ Write-Host "SHA-256 $releaseHash"
 if (-not $KeepTools) {
     Remove-Item $GoHome,$PwshHome -Recurse -Force -ErrorAction SilentlyContinue
 }
+
