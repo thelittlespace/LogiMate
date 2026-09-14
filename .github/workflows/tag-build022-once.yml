@@ -1,0 +1,35 @@
+name: Tag Build 022 once
+
+on:
+  push:
+    branches:
+      - 'tmp/build022-tagdispatch'
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  tag-and-dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - name: Create exact Build 022 tag
+        env:
+          TARGET_SHA: 8969b730ef1148be9e5a117b19a8dd6e0c47b8b2
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git rev-parse -q --verify "refs/tags/v0.0.1-alpha.022" >/dev/null; then
+            existing="$(git rev-list -n 1 v0.0.1-alpha.022)"
+            test "$existing" = "$TARGET_SHA" || { echo "Tag already exists on unexpected commit $existing"; exit 1; }
+          else
+            git tag -a v0.0.1-alpha.022 "$TARGET_SHA" -m "LogiMate 0.0.1-alpha Build 022"
+            git push origin refs/tags/v0.0.1-alpha.022
+          fi
+      - name: Dispatch Release Candidate on tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run release-candidate.yml --ref v0.0.1-alpha.022
