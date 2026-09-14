@@ -1,0 +1,133 @@
+name: Build 022 source-only helper
+
+on:
+  push:
+    branches:
+      - release/build022
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: release/build022
+          fetch-depth: 0
+      - name: Harden release downloads and prepare Build 022 sources
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib, re
+
+          root = Path('.')
+          (root / 'BUILD').write_text('022\n', encoding='utf-8')
+
+          for name in ('build.ps1', 'README.md', 'RELEASE_NOTES.txt'):
+              p = root / name
+              if p.exists():
+                  text = p.read_text(encoding='utf-8-sig')
+                  text = text.replace('Build 021', 'Build 022').replace('Build021', 'Build022')
+                  p.write_text(text, encoding='utf-8', newline='\n')
+
+          script = root / 'Build-Release-Go1271.ps1'
+          text = script.read_text(encoding='utf-8-sig')
+          text = text.replace('Build 021', 'Build 022').replace('Build021', 'Build022').replace("'021'", "'022'")
+
+          hardened = r'''function Get-VerifiedArchive {
+              param(
+                  [Parameter(Mandatory=$true)][string]$Url,
+                  [Parameter(Mandatory=$true)][string]$Path,
+                  [Parameter(Mandatory=$true)][string]$Sha256
+              )
+              $expected = $Sha256.ToLowerInvariant()
+              if (Test-Path -LiteralPath $Path) {
+                  $cached = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+                  if ($cached -eq $expected) {
+                      Write-Host "Using verified cached archive: $([IO.Path]::GetFileName($Path))"
+                      Write-Host "Verified SHA-256: $cached"
+                      return
+                  }
+                  Write-Warning "Cached archive hash mismatch; deleting $Path"
+                  Remove-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
+              }
+
+              $urls = @($Url)
+              if ($Url.StartsWith('https://go.dev/dl/', [StringComparison]::OrdinalIgnoreCase)) {
+                  $urls += $Url.Replace('https://go.dev/dl/', 'https://dl.google.com/go/')
+              }
+
+              $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
+              $downloaded = $false
+              foreach ($candidate in $urls) {
+                  for ($attempt = 1; $attempt -le 2; $attempt++) {
+                      $partial = "$Path.part"
+                      Remove-Item -LiteralPath $partial -Force -ErrorAction SilentlyContinue
+                      Write-Host "Downloading $candidate (attempt $attempt/2)"
+                      $exitCode = 1
+                      if ($null -ne $curl) {
+                          & $curl.Source --fail --location --progress-bar --connect-timeout 15 --max-time 180 --speed-time 30 --speed-limit 1024 --retry 1 --retry-delay 2 --retry-all-errors --output $partial $candidate
+                          $exitCode = $LASTEXITCODE
+                      } else {
+                          try {
+                              Invoke-WebRequest -UseBasicParsing -Uri $candidate -OutFile $partial -TimeoutSec 180
+                              $exitCode = 0
+                          } catch {
+                              Write-Warning "Download attempt failed: $($_.Exception.Message)"
+                              $exitCode = 1
+                          }
+                      }
+
+                      if ($exitCode -eq 0 -and (Test-Path -LiteralPath $partial -PathType Leaf)) {
+                          $actual = (Get-FileHash -LiteralPath $partial -Algorithm SHA256).Hash.ToLowerInvariant()
+                          if ($actual -eq $expected) {
+                              Move-Item -LiteralPath $partial -Destination $Path -Force
+                              Write-Host "Verified SHA-256: $actual"
+                              $downloaded = $true
+                              break
+                          }
+                          Write-Warning "Downloaded archive SHA-256 mismatch. Expected $expected, got $actual"
+                      } else {
+                          Write-Warning "Download failed or timed out (exit code $exitCode): $candidate"
+                      }
+                      Remove-Item -LiteralPath $partial -Force -ErrorAction SilentlyContinue
+                  }
+                  if ($downloaded) { break }
+              }
+              if (-not $downloaded) {
+                  throw "Unable to download and verify $([IO.Path]::GetFileName($Path)) after bounded retries"
+              }
+          }'''
+
+          pattern = r'function Get-VerifiedArchive \{.*?\n\}\n\nfunction Reset-Directory'
+          text, n = re.subn(pattern, hardened + '\n\nfunction Reset-Directory', text, count=1, flags=re.S)
+          if n != 1:
+              raise SystemExit('Could not replace Get-VerifiedArchive exactly once')
+          script.write_text(text, encoding='utf-8', newline='\n')
+
+          manifest = root / 'SOURCE_MANIFEST_SHA256.txt'
+          paths = []
+          for line in manifest.read_text(encoding='utf-8-sig').splitlines():
+              if not line.strip() or line.startswith('#'):
+                  continue
+              _, rel = line.split('  ', 1)
+              paths.append(rel)
+          out = []
+          for rel in paths:
+              p = root / rel
+              if not p.is_file():
+                  raise SystemExit(f'Manifest file missing: {rel}')
+              out.append(f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {rel}\n')
+          manifest.write_text(''.join(out), encoding='utf-8', newline='\n')
+          print(f'Regenerated source manifest: {len(paths)} files')
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add BUILD Build-Release-Go1271.ps1 build.ps1 README.md RELEASE_NOTES.txt SOURCE_MANIFEST_SHA256.txt
+          git commit -m "Prepare Build 022 with bounded release downloads"
+          git push origin HEAD:release/build022
