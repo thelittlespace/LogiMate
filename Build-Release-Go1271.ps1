@@ -41,6 +41,7 @@ function Get-VerifiedArchive {
         [Parameter(Mandatory=$true)][string]$Path,
         [Parameter(Mandatory=$true)][string]$Sha256
     )
+
     $expected = $Sha256.ToLowerInvariant()
     if (Test-Path -LiteralPath $Path) {
         $cached = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
@@ -65,6 +66,7 @@ function Get-VerifiedArchive {
             $partial = "$Path.part"
             Remove-Item -LiteralPath $partial -Force -ErrorAction SilentlyContinue
             Write-Host "Downloading $candidate (attempt $attempt/2)"
+
             $exitCode = 1
             if ($null -ne $curl) {
                 & $curl.Source --fail --location --progress-bar --connect-timeout 15 --max-time 180 --speed-time 30 --speed-limit 1024 --retry 1 --retry-delay 2 --retry-all-errors --output $partial $candidate
@@ -95,6 +97,7 @@ function Get-VerifiedArchive {
         }
         if ($downloaded) { break }
     }
+
     if (-not $downloaded) {
         throw "Unable to download and verify $([IO.Path]::GetFileName($Path)) after bounded retries"
     }
