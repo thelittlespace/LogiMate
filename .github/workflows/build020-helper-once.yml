@@ -1,0 +1,50 @@
+name: Build 020 helper once
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: release/build020
+          fetch-depth: 0
+      - name: Prepare Build 020 reproducible release sources
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-Content -Path BUILD -Value '020' -Encoding ascii
+
+          $build = Get-Content build.ps1 -Raw
+          $build = $build.Replace('Build 019','Build 020').Replace('Build019','Build020')
+          if ($build -notmatch "GOFLAGS='-buildvcs=false'") {
+            $build = $build.Replace("`$env:GOARCH='amd64'", "`$env:GOARCH='amd64'`r`n`$env:GOFLAGS='-buildvcs=false'")
+          }
+          Set-Content -Path build.ps1 -Value $build -Encoding utf8
+
+          $release = Get-Content Build-Release-Go1271.ps1 -Raw
+          $release = $release.Replace('Build 019','Build 020').Replace('Build019','Build020')
+          $release = $release.Replace("`$env:GOTOOLCHAIN='local'", "`$env:GOTOOLCHAIN='local'`r`n`$env:GOFLAGS='-buildvcs=false'")
+          Set-Content -Path Build-Release-Go1271.ps1 -Value $release -Encoding utf8
+
+          $lines = Get-Content SOURCE_MANIFEST_SHA256.txt
+          $out = foreach ($line in $lines) {
+            if ($line -notmatch '^([0-9a-fA-F]{64})  (.+)$') { throw "Malformed manifest line: $line" }
+            $path = $Matches[2]
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Manifest path missing: $path" }
+            $hash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $path"
+          }
+          Set-Content -Path SOURCE_MANIFEST_SHA256.txt -Value $out -Encoding ascii
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add BUILD build.ps1 Build-Release-Go1271.ps1 SOURCE_MANIFEST_SHA256.txt
+          git commit -m 'Prepare Build 020 reproducible release'
+          git push origin HEAD:release/build020
