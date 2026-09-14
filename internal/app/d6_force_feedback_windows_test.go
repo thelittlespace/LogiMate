@@ -69,7 +69,7 @@ func TestD62FocusOrderIsViewSpecificAndSkipsUnavailableTransient(t *testing.T) {
 
 	d62ActiveView = d62ViewBasis
 	basis := d6FocusOrder()
-	if len(basis) != 2+2+d62ViewCount+3+2 {
+	if len(basis) != 5+2+d62ViewCount+3+2 {
 		t.Fatalf("basis focus order unexpected: %d / %v", len(basis), basis)
 	}
 	if basis[0] != d6FocusTabLive || basis[1] != d6FocusTabFFB {

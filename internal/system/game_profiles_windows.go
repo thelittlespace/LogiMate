@@ -128,14 +128,24 @@ func normalizeGameProfile(p GameProfile) GameProfile {
 	seen := map[string]bool{}
 	out := []string{}
 	for _, x := range p.Executables {
+		x = strings.TrimSpace(x)
+		if x == "" {
+			continue
+		}
 		x = strings.TrimSpace(strings.TrimSuffix(filepath.Base(x), ".exe"))
-		if x != "" && !seen[strings.ToLower(x)] {
+		if x != "" && x != "." && !seen[strings.ToLower(x)] {
 			seen[strings.ToLower(x)] = true
 			out = append(out, x)
 		}
 	}
 	p.Executables = out
-	p.ProcessMatch = strings.TrimSpace(strings.TrimSuffix(filepath.Base(p.ProcessMatch), ".exe"))
+	p.ProcessMatch = strings.TrimSpace(p.ProcessMatch)
+	if p.ProcessMatch != "" {
+		p.ProcessMatch = strings.TrimSpace(strings.TrimSuffix(filepath.Base(p.ProcessMatch), ".exe"))
+		if p.ProcessMatch == "." {
+			p.ProcessMatch = ""
+		}
+	}
 	if len(p.ProcessMatch) > 128 {
 		p.ProcessMatch = p.ProcessMatch[:128]
 	}

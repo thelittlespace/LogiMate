@@ -126,7 +126,7 @@ func TestD58FocusNamespacesDoNotOverlap(t *testing.T) {
 func TestBuild018MemoryIntegrityStatusIsKeyboardReachable(t *testing.T) {
 	oldPage, oldRect, oldButtons := currentPage, memoryIntegrityRect, actionButtons
 	defer func() { currentPage, memoryIntegrityRect, actionButtons = oldPage, oldRect, oldButtons }()
-	currentPage = pageOverview
+	currentPage = pageWheel
 	memoryIntegrityRect = RECT{10, 10, 180, 40}
 	for i := range actionButtons {
 		actionButtons[i].visible = false

@@ -61,7 +61,7 @@ func TestFusionC6SourceHonorsInvertGainAndSafety(t *testing.T) {
 	gp := normalizeGameProfile(GameProfile{Name: "WF2", Source: "openg27", GameFFBEnabled: true, GameFFBGainPercent: 100, GameFFBInvert: true})
 	ep := normalizeNativeEngineProfile(NativeEngineProfile{Name: "x", RotationDegrees: 900, MasterGainPercent: 100, ConstantGainPercent: 100, SpringGainPercent: 100, DamperGainPercent: 100, FrictionGainPercent: 100})
 	cfg := normalizeNativeFFBConfig(NativeFFBConfig{MasterGainPercent: 100, ConstantLimit: 10, SpringGain: 20, DamperGain: 20, FrictionGain: 20, SlewPerTick: 2, WatchdogMS: 1200})
-	src := &fusionC6TelemetrySource{active: true, game: gp, engine: ep, cfg: cfg}
+	src := &fusionC6TelemetrySource{active: true, game: gp, engine: ep, cfg: cfg, adapterID: TelemetryAdapterWreckfestPino}
 	fr, ok := src.TryGetFrame()
 	if !ok {
 		t.Fatal("no frame")

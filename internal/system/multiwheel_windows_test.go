@@ -69,8 +69,11 @@ func TestReconcileAfterResetAutoSelectsOnlyWheel(t *testing.T) {
 	if model != "Logitech G27" || !strings.Contains(status, "automatisch ausgewählt") {
 		t.Fatalf("model=%q status=%q", model, status)
 	}
-	if got := ReadSelectedWheelID(dir); !strings.EqualFold(got, dev.InstanceID) {
-		t.Fatalf("persisted selection=%q", got)
+	if got := ReadSelectedWheelID(dir); got != "" {
+		t.Fatalf("transient raw-HID identity must not be persisted, got %q", got)
+	}
+	if !strings.Contains(status, "transienter Fallback") {
+		t.Fatalf("status must explain non-persistent fallback: %q", status)
 	}
 }
 
@@ -100,18 +103,18 @@ func TestPerDeviceC294PreferencesStayIndependent(t *testing.T) {
 	}
 }
 
-func TestSingleC294PerDevicePreferenceBeatsAggregateFallback(t *testing.T) {
+func TestSingleC294TopologyOnlyPreferenceDoesNotAuthorizeModel(t *testing.T) {
 	dir := t.TempDir()
 	dev := testWheel("A", pidCompat, "USB Input Device")
 	if err := SaveWheelDevicePreference(dir, dev.InstanceID, modelG25); err != nil {
 		t.Fatal(err)
 	}
 	_, _, model, evidence, _, _ := reconcileWheelSelection(dir, []Device{dev}, modelG27, modelG27+" (manuell bestätigt / C294)", "global fallback", "Generic HID / Modern")
-	if !IsG25Model(model) {
-		t.Fatalf("model=%q, per-device G25 preference must win", model)
+	if !IsCompatibilityModel(model) {
+		t.Fatalf("model=%q, weak topology-only preference must not authorize a C294 model", model)
 	}
-	if !strings.Contains(evidence, "Gerätebestätigung") {
-		t.Fatalf("evidence=%q", evidence)
+	if strings.Contains(evidence, "Gerätebestätigung") {
+		t.Fatalf("untrusted topology-only preference leaked into evidence=%q", evidence)
 	}
 }
 

@@ -113,10 +113,18 @@ func startTelemetryAdapter(id string, port int, automatic bool) error {
 }
 
 func ParseLogiMateJSONTelemetry(b []byte) (TelemetryFrame, error) {
-	return gameadapter.ParseLocalJSON(b, time.Now())
+	f, err := gameadapter.ParseLocalJSON(b, time.Now())
+	if err == nil {
+		f.Adapter = TelemetryAdapterLogiMateJSON
+	}
+	return f, err
 }
 func ParseWreckfestPinoTelemetry(b []byte) (TelemetryFrame, error) {
-	return gameadapter.ParseWreckfestPino(b, time.Now())
+	f, err := gameadapter.ParseWreckfestPino(b, time.Now())
+	if err == nil {
+		f.Adapter = TelemetryAdapterWreckfestPino
+	}
+	return f, err
 }
 func ParseOpenG27PinoTelemetry(b []byte) (TelemetryFrame, error) {
 	return ParseWreckfestPinoTelemetry(b)

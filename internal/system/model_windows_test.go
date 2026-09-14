@@ -384,7 +384,7 @@ func TestBuildWheelDevicesMultiC294DoesNotApplyGlobalPreference(t *testing.T) {
 }
 
 func TestCanChangeSelectedWheelModeRequiresExactlyOneWheel(t *testing.T) {
-	one := WheelDevice{ID: `HID\VID_046D&PID_C29B\A`, Model: modelG27, Supported: true}
+	one := WheelDevice{ID: `HID\VID_046D&PID_C29B\A`, Model: modelG27, Supported: true, ModelConfirmed: true, PnPVerified: true}
 	s := State{Wheels: []WheelDevice{one}, SelectedWheelID: one.ID}
 	if !CanChangeSelectedWheelMode(s) {
 		t.Fatal("single selected supported wheel should allow a mode transition")

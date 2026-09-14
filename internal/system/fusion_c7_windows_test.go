@@ -48,7 +48,7 @@ func TestFusionC7CurrentReadinessBlocksLegacyMode(t *testing.T) {
 	}
 }
 
-func TestFusionC7KeepsLegacyBuilderDifferencesVisible(t *testing.T) {
+func TestFusionC7ReflectsCurrentLegacyBuilderParity(t *testing.T) {
 	w := WheelDevice{ID: "usbloc:g27", Name: "Logitech G27", Model: "Logitech G27", Mode: "Generic HID", Supported: true, ModelConfirmed: true, PnPVerified: true}
 	s := State{Wheels: []WheelDevice{w}, SelectedWheelID: w.ID, WheelModel: w.Model, ActiveMode: "Generic HID / Modern"}
 	r := BuildFusionC7ParityReport(s)
@@ -56,8 +56,8 @@ func TestFusionC7KeepsLegacyBuilderDifferencesVisible(t *testing.T) {
 	for _, c := range r.Checks {
 		if c.Name == "C2 Legacy Builder Shadow" {
 			found = true
-			if c.Status != "WARN" {
-				t.Fatalf("known C2 differences must remain visible as WARN, got %+v", c)
+			if c.Status != "PASS" {
+				t.Fatalf("current C2 shadow should be fully byte-aligned, got %+v", c)
 			}
 		}
 	}

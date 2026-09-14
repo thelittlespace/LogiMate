@@ -562,16 +562,22 @@ func deviceStableID(d Device) string {
 }
 
 func deviceSessionGroupID(d Device) string {
-	// Correlate the USB wheel node and its HID child collections by the actual
-	// USB topology token first. This is more robust than ContainerID on classic
-	// multimode Logitech wheels, where Windows may expose incomplete/different
-	// container metadata during C294 <-> native re-enumeration. The token is
-	// used only for current-session grouping; it never grants model authority.
-	if id := DeriveStableWheelID(d.InstanceID, d.ParentID); id != "" {
-		return id
-	}
+	// For the current Windows enumeration, ContainerID is the strongest grouping
+	// key because the USB devnode and all HID child collections of one physical
+	// device share it. Persisted identity remains separate (StableID/USB slot), so
+	// a container replacement across C294 <-> native re-enumeration cannot break
+	// cross-session selection while same-session USB/HID nodes still collapse.
 	if id := strings.TrimSpace(d.ContainerID); id != "" {
 		return "container:" + strings.ToLower(id)
+	}
+	// Some snapshots do not expose ContainerID but do carry the physical USB
+	// parent in PhysicalID. Normalize that parent to the same USB-slot token used
+	// by the USB devnode before falling back to interface-specific identities.
+	if id := DeriveStableWheelID(d.PhysicalID, ""); id != "" {
+		return id
+	}
+	if id := DeriveStableWheelID(d.InstanceID, d.ParentID); id != "" {
+		return id
 	}
 	if id := deviceStableID(d); id != "" {
 		return id
@@ -915,14 +921,18 @@ func WheelDeviceLabel(w WheelDevice) string {
 }
 
 func wheelModelKind(w WheelDevice) WheelModelKind {
-	if w.ModelKind != WheelModelUnknown {
+	// Zero-value structs and older persisted state predate the typed identity
+	// fields. An empty string is therefore "not populated", not an authoritative
+	// model. Fall back to the presentation model just as we do for explicit
+	// WheelModelUnknown.
+	if strings.TrimSpace(string(w.ModelKind)) != "" && w.ModelKind != WheelModelUnknown {
 		return w.ModelKind
 	}
 	return ClassifyWheelModel(w.Model)
 }
 
 func wheelModeKind(w WheelDevice) OperatingModeKind {
-	if w.ModeKind != OperatingModeUnknown {
+	if strings.TrimSpace(string(w.ModeKind)) != "" && w.ModeKind != OperatingModeUnknown {
 		return w.ModeKind
 	}
 	return ClassifyOperatingMode(w.Mode)
