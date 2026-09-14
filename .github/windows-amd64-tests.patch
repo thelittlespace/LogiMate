@@ -1,0 +1,334 @@
+diff --git a/internal/app/accessibility_d58_windows_test.go b/internal/app/accessibility_d58_windows_test.go
+index e6bdfa7..ac0ab5b 100644
+--- a/internal/app/accessibility_d58_windows_test.go
++++ b/internal/app/accessibility_d58_windows_test.go
+@@ -38,6 +38,7 @@ func TestD58AccessibilityControlIDsDoNotOverlap(t *testing.T) {
+ 		add(accessibilityIDNavBase+i, "nav")
+ 	}
+ 	add(accessibilityIDAdvanced, "advanced")
++	add(accessibilityIDMemoryIntegrity, "memory-integrity")
+ 	for i := range themeChoices {
+ 		add(accessibilityIDThemeBase+i, "theme")
+ 	}
+@@ -86,6 +87,7 @@ func TestD58FocusNamespacesDoNotOverlap(t *testing.T) {
+ 		add(i, "nav")
+ 	}
+ 	add(focusWheelAdvanced, "advanced")
++	add(focusMemoryIntegrity, "memory-integrity")
+ 	for i := range actionButtons {
+ 		add(focusActionBase+i, "action")
+ 	}
+@@ -120,3 +122,20 @@ func TestD58FocusNamespacesDoNotOverlap(t *testing.T) {
+ 		add(focusDiagnosticsTabBase+i, "diagnostics-tab")
+ 	}
+ }
++
++func TestBuild018MemoryIntegrityStatusIsKeyboardReachable(t *testing.T) {
++	oldPage, oldRect, oldButtons := currentPage, memoryIntegrityRect, actionButtons
++	defer func() { currentPage, memoryIntegrityRect, actionButtons = oldPage, oldRect, oldButtons }()
++	currentPage = pageWheel
++	memoryIntegrityRect = RECT{10, 10, 180, 40}
++	for i := range actionButtons {
++		actionButtons[i].visible = false
++		actionButtons[i].enabled = false
++	}
++	for _, id := range focusOrder() {
++		if id == focusMemoryIntegrity {
++			return
++		}
++	}
++	t.Fatalf("Build 018 memory-integrity status missing from keyboard focus order: %v", focusOrder())
++}
+diff --git a/internal/app/d6_force_feedback_windows_test.go b/internal/app/d6_force_feedback_windows_test.go
+index 491f38e..78705c5 100644
+--- a/internal/app/d6_force_feedback_windows_test.go
++++ b/internal/app/d6_force_feedback_windows_test.go
+@@ -69,7 +69,7 @@ func TestD62FocusOrderIsViewSpecificAndSkipsUnavailableTransient(t *testing.T) {
+ 
+ 	d62ActiveView = d62ViewBasis
+ 	basis := d6FocusOrder()
+-	if len(basis) != 2+2+d62ViewCount+3+2 {
++	if len(basis) != 5+2+d62ViewCount+3+2 {
+ 		t.Fatalf("basis focus order unexpected: %d / %v", len(basis), basis)
+ 	}
+ 	if basis[0] != d6FocusTabLive || basis[1] != d6FocusTabFFB {
+diff --git a/internal/app/visual_windows.go b/internal/app/visual_windows.go
+index b079f4b..82c58df 100644
+--- a/internal/app/visual_windows.go
++++ b/internal/app/visual_windows.go
+@@ -435,7 +435,7 @@ func wheelAttentionCopy(s system.State) (title, detail, icon string, accent uint
+ 	}
+ 	if system.IsCompatibilityModel(s.WheelModel) {
+ 		return "C294 erkannt · Modellbestätigung erforderlich",
+-			"Windows erkennt das Lenkrad im gemeinsamen Logitech-Kompatibilitätsmodus. Live-Diagnose bleibt möglich, aber modellabhängige HID-Kommandos und Treiberwechsel sind gesperrt, bis G25, G27 oder Driving Force GT einmalig für dieses physische Rad bestätigt wurde.",
++			"Windows erkennt das Lenkrad im gemeinsamen Logitech-Kompatibilitätsmodus. Live-Diagnose bleibt möglich. Das Modell muss jedoch als G25, G27 oder Driving Force GT bestätigt sein, bevor modellabhängige HID-Kommandos oder Treiberwechsel freigegeben werden.",
+ 			"?", colWarning, true
+ 	}
+ 	return "", "", "", colAccent, false
+diff --git a/internal/system/fusion_c2_windows_test.go b/internal/system/fusion_c2_windows_test.go
+index 8148f0f..d4e57c1 100644
+--- a/internal/system/fusion_c2_windows_test.go
++++ b/internal/system/fusion_c2_windows_test.go
+@@ -9,14 +9,9 @@ func TestFusionC2ShadowKnownParityAndDiffs(t *testing.T) {
+ 	for _, c := range FusionC2ProtocolComparisons() {
+ 		m[c.Name] = c.Match
+ 	}
+-	for _, name := range []string{"Rotation 900°", "G27 native switch", "Autocenter SpringSet", "Autocenter SpringEnable sequence", "Constant Force neutral/start", "Damper slot-1 layout", "Friction slot-1 layout", "Condition slot-1 stop"} {
++	for _, name := range []string{"Rotation 900°", "G27 native switch", "G27 LEDs 0x1F", "Autocenter SpringSet", "Autocenter SpringEnable sequence", "Constant Force neutral/start", "Damper slot-2 layout", "Friction slot-3 layout", "Damper slot-2 stop", "Friction slot-3 stop"} {
+ 		if !m[name] {
+ 			t.Fatalf("expected C2 parity for %q", name)
+ 		}
+ 	}
+-	for _, name := range []string{"G27 LEDs 0x1F"} {
+-		if m[name] {
+-			t.Fatalf("expected C2 shadow difference for %q; routing must not be silently changed", name)
+-		}
+-	}
+ }
+diff --git a/internal/system/fusion_c6_windows_test.go b/internal/system/fusion_c6_windows_test.go
+index fd5424f..6bac745 100644
+--- a/internal/system/fusion_c6_windows_test.go
++++ b/internal/system/fusion_c6_windows_test.go
+@@ -61,7 +61,7 @@ func TestFusionC6SourceHonorsInvertGainAndSafety(t *testing.T) {
+ 	gp := normalizeGameProfile(GameProfile{Name: "WF2", Source: "openg27", GameFFBEnabled: true, GameFFBGainPercent: 100, GameFFBInvert: true})
+ 	ep := normalizeNativeEngineProfile(NativeEngineProfile{Name: "x", RotationDegrees: 900, MasterGainPercent: 100, ConstantGainPercent: 100, SpringGainPercent: 100, DamperGainPercent: 100, FrictionGainPercent: 100})
+ 	cfg := normalizeNativeFFBConfig(NativeFFBConfig{MasterGainPercent: 100, ConstantLimit: 10, SpringGain: 20, DamperGain: 20, FrictionGain: 20, SlewPerTick: 2, WatchdogMS: 1200})
+-	src := &fusionC6TelemetrySource{active: true, game: gp, engine: ep, cfg: cfg}
++	src := &fusionC6TelemetrySource{active: true, game: gp, engine: ep, cfg: cfg, adapterID: TelemetryAdapterWreckfestPino}
+ 	fr, ok := src.TryGetFrame()
+ 	if !ok {
+ 		t.Fatal("no frame")
+diff --git a/internal/system/fusion_c7_windows_test.go b/internal/system/fusion_c7_windows_test.go
+index 933da75..99f1a20 100644
+--- a/internal/system/fusion_c7_windows_test.go
++++ b/internal/system/fusion_c7_windows_test.go
+@@ -48,7 +48,7 @@ func TestFusionC7CurrentReadinessBlocksLegacyMode(t *testing.T) {
+ 	}
+ }
+ 
+-func TestFusionC7KeepsLegacyBuilderDifferencesVisible(t *testing.T) {
++func TestFusionC7ReflectsCurrentLegacyBuilderParity(t *testing.T) {
+ 	w := WheelDevice{ID: "usbloc:g27", Name: "Logitech G27", Model: "Logitech G27", Mode: "Generic HID", Supported: true, ModelConfirmed: true, PnPVerified: true}
+ 	s := State{Wheels: []WheelDevice{w}, SelectedWheelID: w.ID, WheelModel: w.Model, ActiveMode: "Generic HID / Modern"}
+ 	r := BuildFusionC7ParityReport(s)
+@@ -56,8 +56,8 @@ func TestFusionC7KeepsLegacyBuilderDifferencesVisible(t *testing.T) {
+ 	for _, c := range r.Checks {
+ 		if c.Name == "C2 Legacy Builder Shadow" {
+ 			found = true
+-			if c.Status != "WARN" {
+-				t.Fatalf("known C2 differences must remain visible as WARN, got %+v", c)
++			if c.Status != "PASS" {
++				t.Fatalf("current C2 shadow should be fully byte-aligned, got %+v", c)
+ 			}
+ 		}
+ 	}
+diff --git a/internal/system/game_profiles_windows.go b/internal/system/game_profiles_windows.go
+index 9d648ff..112a818 100644
+--- a/internal/system/game_profiles_windows.go
++++ b/internal/system/game_profiles_windows.go
+@@ -128,14 +128,24 @@ func normalizeGameProfile(p GameProfile) GameProfile {
+ 	seen := map[string]bool{}
+ 	out := []string{}
+ 	for _, x := range p.Executables {
++		x = strings.TrimSpace(x)
++		if x == "" {
++			continue
++		}
+ 		x = strings.TrimSpace(strings.TrimSuffix(filepath.Base(x), ".exe"))
+-		if x != "" && !seen[strings.ToLower(x)] {
++		if x != "" && x != "." && !seen[strings.ToLower(x)] {
+ 			seen[strings.ToLower(x)] = true
+ 			out = append(out, x)
+ 		}
+ 	}
+ 	p.Executables = out
+-	p.ProcessMatch = strings.TrimSpace(strings.TrimSuffix(filepath.Base(p.ProcessMatch), ".exe"))
++	p.ProcessMatch = strings.TrimSpace(p.ProcessMatch)
++	if p.ProcessMatch != "" {
++		p.ProcessMatch = strings.TrimSpace(strings.TrimSuffix(filepath.Base(p.ProcessMatch), ".exe"))
++		if p.ProcessMatch == "." {
++			p.ProcessMatch = ""
++		}
++	}
+ 	if len(p.ProcessMatch) > 128 {
+ 		p.ProcessMatch = p.ProcessMatch[:128]
+ 	}
+diff --git a/internal/system/model_windows_test.go b/internal/system/model_windows_test.go
+index 94b3d92..3aa4881 100644
+--- a/internal/system/model_windows_test.go
++++ b/internal/system/model_windows_test.go
+@@ -384,7 +384,7 @@ func TestBuildWheelDevicesMultiC294DoesNotApplyGlobalPreference(t *testing.T) {
+ }
+ 
+ func TestCanChangeSelectedWheelModeRequiresExactlyOneWheel(t *testing.T) {
+-	one := WheelDevice{ID: `HID\VID_046D&PID_C29B\A`, Model: modelG27, Supported: true}
++	one := WheelDevice{ID: `HID\VID_046D&PID_C29B\A`, Model: modelG27, Supported: true, ModelConfirmed: true, PnPVerified: true}
+ 	s := State{Wheels: []WheelDevice{one}, SelectedWheelID: one.ID}
+ 	if !CanChangeSelectedWheelMode(s) {
+ 		t.Fatal("single selected supported wheel should allow a mode transition")
+diff --git a/internal/system/multiwheel_windows_test.go b/internal/system/multiwheel_windows_test.go
+index bc18010..a6fa429 100644
+--- a/internal/system/multiwheel_windows_test.go
++++ b/internal/system/multiwheel_windows_test.go
+@@ -69,8 +69,11 @@ func TestReconcileAfterResetAutoSelectsOnlyWheel(t *testing.T) {
+ 	if model != "Logitech G27" || !strings.Contains(status, "automatisch ausgewählt") {
+ 		t.Fatalf("model=%q status=%q", model, status)
+ 	}
+-	if got := ReadSelectedWheelID(dir); !strings.EqualFold(got, dev.InstanceID) {
+-		t.Fatalf("persisted selection=%q", got)
++	if got := ReadSelectedWheelID(dir); got != "" {
++		t.Fatalf("transient raw-HID identity must not be persisted, got %q", got)
++	}
++	if !strings.Contains(status, "transienter Fallback") {
++		t.Fatalf("status must explain non-persistent fallback: %q", status)
+ 	}
+ }
+ 
+@@ -100,18 +103,18 @@ func TestPerDeviceC294PreferencesStayIndependent(t *testing.T) {
+ 	}
+ }
+ 
+-func TestSingleC294PerDevicePreferenceBeatsAggregateFallback(t *testing.T) {
++func TestSingleC294TopologyOnlyPreferenceDoesNotAuthorizeModel(t *testing.T) {
+ 	dir := t.TempDir()
+ 	dev := testWheel("A", pidCompat, "USB Input Device")
+ 	if err := SaveWheelDevicePreference(dir, dev.InstanceID, modelG25); err != nil {
+ 		t.Fatal(err)
+ 	}
+ 	_, _, model, evidence, _, _ := reconcileWheelSelection(dir, []Device{dev}, modelG27, modelG27+" (manuell bestätigt / C294)", "global fallback", "Generic HID / Modern")
+-	if !IsG25Model(model) {
+-		t.Fatalf("model=%q, per-device G25 preference must win", model)
++	if !IsCompatibilityModel(model) {
++		t.Fatalf("model=%q, weak topology-only preference must not authorize a C294 model", model)
+ 	}
+-	if !strings.Contains(evidence, "Gerätebestätigung") {
+-		t.Fatalf("evidence=%q", evidence)
++	if strings.Contains(evidence, "Gerätebestätigung") {
++		t.Fatalf("untrusted topology-only preference leaked into evidence=%q", evidence)
+ 	}
+ }
+ 
+diff --git a/internal/system/native_ffb_windows_test.go b/internal/system/native_ffb_windows_test.go
+index d0a3d01..34da4af 100644
+--- a/internal/system/native_ffb_windows_test.go
++++ b/internal/system/native_ffb_windows_test.go
+@@ -26,10 +26,10 @@ func TestConstantForceReportBoundsAndEncoding(t *testing.T) {
+ 	if !(left[3] < neutral[3] && neutral[3] <= right[3]) {
+ 		t.Fatalf("force translation not monotonic: %d %d %d", left[3], neutral[3], right[3])
+ 	}
+-	if _, err := BuildClassicConstantForceReport(11, false); err == nil {
++	if _, err := BuildClassicConstantForceReport(NativeManualFFBTestMaxPercent+1, false); err == nil {
+ 		t.Fatal("unsafe positive force accepted")
+ 	}
+-	if _, err := BuildClassicConstantForceReport(-11, false); err == nil {
++	if _, err := BuildClassicConstantForceReport(-(NativeManualFFBTestMaxPercent + 1), false); err == nil {
+ 		t.Fatal("unsafe negative force accepted")
+ 	}
+ }
+diff --git a/internal/system/release_hardening_windows.go b/internal/system/release_hardening_windows.go
+index c83487b..c1fae18 100644
+--- a/internal/system/release_hardening_windows.go
++++ b/internal/system/release_hardening_windows.go
+@@ -155,8 +155,17 @@ func CreateConfigSnapshot(dataDir string) (string, error) {
+ 	if e := os.MkdirAll(dir, 0755); e != nil {
+ 		return "", e
+ 	}
+-	path := filepath.Join(dir, "LogiMate-Config-"+time.Now().Format("20060102-150405")+".zip")
+-	f, e := os.Create(path)
++	base := "LogiMate-Config-" + time.Now().Format("20060102-150405")
++	path := filepath.Join(dir, base+".zip")
++	for i := 1; ; i++ {
++		if _, statErr := os.Stat(path); errors.Is(statErr, os.ErrNotExist) {
++			break
++		} else if statErr != nil {
++			return "", statErr
++		}
++		path = filepath.Join(dir, fmt.Sprintf("%s-%02d.zip", base, i))
++	}
++	f, e := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+ 	if e != nil {
+ 		return "", e
+ 	}
+diff --git a/internal/system/telemetry_windows.go b/internal/system/telemetry_windows.go
+index c393ee6..adc5cfc 100644
+--- a/internal/system/telemetry_windows.go
++++ b/internal/system/telemetry_windows.go
+@@ -113,10 +113,18 @@ func startTelemetryAdapter(id string, port int, automatic bool) error {
+ }
+ 
+ func ParseLogiMateJSONTelemetry(b []byte) (TelemetryFrame, error) {
+-	return gameadapter.ParseLocalJSON(b, time.Now())
++	f, err := gameadapter.ParseLocalJSON(b, time.Now())
++	if err == nil {
++		f.Adapter = TelemetryAdapterLogiMateJSON
++	}
++	return f, err
+ }
+ func ParseWreckfestPinoTelemetry(b []byte) (TelemetryFrame, error) {
+-	return gameadapter.ParseWreckfestPino(b, time.Now())
++	f, err := gameadapter.ParseWreckfestPino(b, time.Now())
++	if err == nil {
++		f.Adapter = TelemetryAdapterWreckfestPino
++	}
++	return f, err
+ }
+ func ParseOpenG27PinoTelemetry(b []byte) (TelemetryFrame, error) {
+ 	return ParseWreckfestPinoTelemetry(b)
+diff --git a/internal/system/wheels_windows.go b/internal/system/wheels_windows.go
+index d2c3019..fcc8333 100644
+--- a/internal/system/wheels_windows.go
++++ b/internal/system/wheels_windows.go
+@@ -562,17 +562,23 @@ func deviceStableID(d Device) string {
+ }
+ 
+ func deviceSessionGroupID(d Device) string {
+-	// Correlate the USB wheel node and its HID child collections by the actual
+-	// USB topology token first. This is more robust than ContainerID on classic
+-	// multimode Logitech wheels, where Windows may expose incomplete/different
+-	// container metadata during C294 <-> native re-enumeration. The token is
+-	// used only for current-session grouping; it never grants model authority.
+-	if id := DeriveStableWheelID(d.InstanceID, d.ParentID); id != "" {
+-		return id
+-	}
++	// For the current Windows enumeration, ContainerID is the strongest grouping
++	// key because the USB devnode and all HID child collections of one physical
++	// device share it. Persisted identity remains separate (StableID/USB slot), so
++	// a container replacement across C294 <-> native re-enumeration cannot break
++	// cross-session selection while same-session USB/HID nodes still collapse.
+ 	if id := strings.TrimSpace(d.ContainerID); id != "" {
+ 		return "container:" + strings.ToLower(id)
+ 	}
++	// Some snapshots do not expose ContainerID but do carry the physical USB
++	// parent in PhysicalID. Normalize that parent to the same USB-slot token used
++	// by the USB devnode before falling back to interface-specific identities.
++	if id := DeriveStableWheelID(d.PhysicalID, ""); id != "" {
++		return id
++	}
++	if id := DeriveStableWheelID(d.InstanceID, d.ParentID); id != "" {
++		return id
++	}
+ 	if id := deviceStableID(d); id != "" {
+ 		return id
+ 	}
+@@ -915,14 +921,18 @@ func WheelDeviceLabel(w WheelDevice) string {
+ }
+ 
+ func wheelModelKind(w WheelDevice) WheelModelKind {
+-	if w.ModelKind != WheelModelUnknown {
++	// Zero-value structs and older persisted state predate the typed identity
++	// fields. An empty string is therefore "not populated", not an authoritative
++	// model. Fall back to the presentation model just as we do for explicit
++	// WheelModelUnknown.
++	if strings.TrimSpace(string(w.ModelKind)) != "" && w.ModelKind != WheelModelUnknown {
+ 		return w.ModelKind
+ 	}
+ 	return ClassifyWheelModel(w.Model)
+ }
+ 
+ func wheelModeKind(w WheelDevice) OperatingModeKind {
+-	if w.ModeKind != OperatingModeUnknown {
++	if strings.TrimSpace(string(w.ModeKind)) != "" && w.ModeKind != OperatingModeUnknown {
+ 		return w.ModeKind
+ 	}
+ 	return ClassifyOperatingMode(w.Mode)
+ }
