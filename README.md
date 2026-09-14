@@ -4,7 +4,7 @@
 
 > **Status:** `0.0.1-alpha` — active hardware validation and stabilization. Do not treat alpha builds as production/stable releases.
 
-Current hardened alpha milestone: **Build 018**. Build 018 completed the post-Build-017 re-audit and keeps the public product version at `0.0.1-alpha`. It is an alpha/pre-release, not a stable hardware certification.
+Current hardened alpha milestone: **Build 019**. Build 019 completed the post-Build-017 re-audit and keeps the public product version at `0.0.1-alpha`. It is an alpha/pre-release, not a stable hardware certification.
 
 ## What LogiMate does
 
@@ -30,13 +30,13 @@ The source tree contains the detailed certification and audit history under [`do
 
 Public builds will be distributed through **GitHub Releases**. Prefer the signed installer once signed release artifacts are available. Portable builds are intended mainly for testing and troubleshooting.
 
-The Build 018 release compiler is pinned to **Go 1.27.1** and the release shell to **PowerShell 7.6.6**. The normal release pipeline is defined in [`build.ps1`](build.ps1). On a normal Windows x64 machine, use the verified bootstrap so the exact portable toolchains are downloaded and SHA-256 verified without changing machine-wide installations:
+The Build 019 release compiler is pinned to **Go 1.27.1** and the release shell to **PowerShell 7.6.6**. The normal release pipeline is defined in [`build.ps1`](build.ps1). On a normal Windows x64 machine, use the verified bootstrap so the exact portable toolchains are downloaded and SHA-256 verified without changing machine-wide installations:
 
 ```powershell
 .\Build-Release.cmd
 ```
 
-The bootstrap produces `LogiMate-0.0.1-alpha-Build018-Go1.27.1-Release.zip` only after toolchain identity, tests, a double-build reproducibility check and a source-archive rebuild all pass.
+The bootstrap produces `LogiMate-0.0.1-alpha-Build019-Go1.27.1-Release.zip` only after toolchain identity, tests, a double-build reproducibility check and a source-archive rebuild all pass.
 
 The visible version intentionally remains `0.0.1-alpha` during the current stabilization line; internal build numbers identify test iterations.
 

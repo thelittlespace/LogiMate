@@ -1,4 +1,4 @@
-# LogiMate Build 018 reproducible Windows release bootstrap.
+# LogiMate Build 019 reproducible Windows release bootstrap.
 # This script is intentionally compatible with Windows PowerShell 5.1 so it can
 # bootstrap the pinned release toolchain without changing machine-wide installs.
 [CmdletBinding()]
@@ -29,7 +29,7 @@ $Cache = Join-Path $Tools 'cache'
 $GoHome = Join-Path $Tools 'go'
 $PwshHome = Join-Path $Tools 'pwsh'
 $ReportDir = Join-Path $Root 'release-gate'
-$Transcript = Join-Path $ReportDir 'Build018-Go1.27.1-Release-Gate.txt'
+$Transcript = Join-Path $ReportDir 'Build019-Go1.27.1-Release-Gate.txt'
 
 function Write-Step([string]$Text) {
     Write-Host "`n==> $Text" -ForegroundColor Cyan
@@ -61,7 +61,7 @@ function Reset-Directory([string]$Path) {
 function Assert-SourceManifest {
     $manifest = Join-Path $Root 'SOURCE_MANIFEST_SHA256.txt'
     if (-not (Test-Path -LiteralPath $manifest -PathType Leaf)) { throw 'SOURCE_MANIFEST_SHA256.txt is missing' }
-    $rootFull = [IO.Path]::GetFullPath($Root).TrimEnd('\\') + '\\'
+    $rootFull = [IO.Path]::GetFullPath($Root).TrimEnd([char[]]@([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)) + [IO.Path]::DirectorySeparatorChar
     $count = 0
     foreach ($line in Get-Content -LiteralPath $manifest) {
         if ([string]::IsNullOrWhiteSpace($line) -or $line.StartsWith('#')) { continue }
@@ -94,7 +94,7 @@ Write-Step 'Verify source release identity'
 $version = (Get-Content (Join-Path $Root 'VERSION') -Raw).Trim()
 $build = (Get-Content (Join-Path $Root 'BUILD') -Raw).Trim()
 if ($version -ne '0.0.1-alpha') { throw "Unexpected visible VERSION '$version'; expected 0.0.1-alpha" }
-if ($build -ne '018') { throw "Unexpected BUILD '$build'; expected 018" }
+if ($build -ne '019') { throw "Unexpected BUILD '$build'; expected 018" }
 $goDirective = (Get-Content (Join-Path $Root 'go.mod') | Where-Object { $_ -match '^go\s+' } | Select-Object -First 1)
 if (-not $goDirective) { throw 'go.mod has no go directive' }
 $goDirectiveVersion = (($goDirective -split '\s+')[1]).Trim()
@@ -142,7 +142,7 @@ Set-Location '$escapedRoot'
 `$env:GOROOT='$escapedGoRoot'
 `$env:PATH=(Join-Path '$escapedGoRoot' 'bin') + ';' + `$env:PATH
 `$env:GOTOOLCHAIN='local'
-# Build 018 is an unsigned alpha release unless a later signing-specific pipeline is used.
+# Build 019 is an unsigned alpha release unless a later signing-specific pipeline is used.
 # Clear ambient signing variables so local machine state cannot change reproducibility.
 `$env:LOGIMATE_SIGN_THUMBPRINT=''
 `$env:LOGIMATE_TIMESTAMP_URL=''
@@ -218,14 +218,14 @@ if ($sourceInstaller -ne $finalInstaller) { throw "Source archive rebuild does n
 Write-Step 'Verify release attestation reports the real toolchain'
 $attPath = Join-Path $Root 'dist\RELEASE_ATTESTATION.json'
 $att = Get-Content $attPath -Raw | ConvertFrom-Json
-if ($att.version -ne '0.0.1-alpha' -or $att.build -ne '018') { throw 'Release attestation has wrong release identity' }
+if ($att.version -ne '0.0.1-alpha' -or $att.build -ne '019') { throw 'Release attestation has wrong release identity' }
 if ($att.toolchain.goEnvVersion -ne 'go1.27.1') { throw "Attestation did not record go1.27.1: $($att.toolchain.goEnvVersion)" }
 if ($att.toolchain.powerShellVersion -ne '7.6.6') { throw "Attestation did not record PowerShell 7.6.6: $($att.toolchain.powerShellVersion)" }
 
 Write-Step 'Write local release gate transcript'
 $hashLines = Get-Content (Join-Path $Root 'dist\SHA256SUMS.txt')
 @(
-    'LogiMate Build 018 release gate',
+    'LogiMate Build 019 release gate',
     "Visible version: $version",
     "Internal build: $build",
     "Go: $goVersionText",
@@ -241,11 +241,11 @@ $hashLines = Get-Content (Join-Path $Root 'dist\SHA256SUMS.txt')
     'Release package hashes:',
     $hashLines
 ) | Set-Content -LiteralPath $Transcript -Encoding UTF8
-Copy-Item -LiteralPath $Transcript -Destination (Join-Path $Root 'dist\Build018-Go1.27.1-Release-Gate.txt') -Force
+Copy-Item -LiteralPath $Transcript -Destination (Join-Path $Root 'dist\Build019-Go1.27.1-Release-Gate.txt') -Force
 
 $verificationPath = Join-Path $Root 'dist\PACKAGE_VERIFICATION.txt'
 @(
-    'LogiMate 0.0.1-alpha · Build 018',
+    'LogiMate 0.0.1-alpha · Build 019',
     'Package verification',
     '',
     'Go 1.27.1 exact toolchain: PASS',
@@ -265,14 +265,14 @@ $verificationPath = Join-Path $Root 'dist\PACKAGE_VERIFICATION.txt'
     '',
     "Application SHA-256: $firstApp",
     "Installer SHA-256: $firstInstaller",
-    'Both source-rebuilt files are byte-identical to the Build 018 release binaries.'
+    'Both source-rebuilt files are byte-identical to the Build 019 release binaries.'
 ) | Set-Content -LiteralPath $verificationPath -Encoding UTF8
 
-$completionPath = Join-Path $Root 'dist\LogiMate-0.0.1-alpha-Build018-Completion-Report.md'
+$completionPath = Join-Path $Root 'dist\LogiMate-0.0.1-alpha-Build019-Completion-Report.md'
 @(
-    '# LogiMate 0.0.1-alpha · Build 018 — completion report',
+    '# LogiMate 0.0.1-alpha · Build 019 — completion report',
     '',
-    '## Completed in Build 018',
+    '## Completed in Build 019',
     '',
     '- complete re-audit of the verified Build 017 publication-candidate baseline',
     '- automatic Memory Integrity/HVCI mutation removed; status opens Windows Security only',
@@ -305,10 +305,10 @@ $completionPath = Join-Path $Root 'dist\LogiMate-0.0.1-alpha-Build018-Completion
     '- final clean-machine/manual Windows UI matrix where hardware or human observation is required',
     '- Authenticode publisher signing unless a real signing identity is configured',
     '',
-    'Build 018 remains `0.0.1-alpha` and is published as a prerelease, not a stable fully certified release.'
+    'Build 019 remains `0.0.1-alpha` and is published as a prerelease, not a stable fully certified release.'
 ) | Set-Content -LiteralPath $completionPath -Encoding UTF8
 
-$releaseZip = Join-Path $Root 'LogiMate-0.0.1-alpha-Build018-Go1.27.1-Release.zip'
+$releaseZip = Join-Path $Root 'LogiMate-0.0.1-alpha-Build019-Go1.27.1-Release.zip'
 if (Test-Path $releaseZip) { Remove-Item $releaseZip -Force }
 $releaseStage = Join-Path $ReportDir 'release-package'
 Reset-Directory $releaseStage
