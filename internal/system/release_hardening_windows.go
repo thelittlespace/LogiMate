@@ -155,8 +155,17 @@ func CreateConfigSnapshot(dataDir string) (string, error) {
 	if e := os.MkdirAll(dir, 0755); e != nil {
 		return "", e
 	}
-	path := filepath.Join(dir, "LogiMate-Config-"+time.Now().Format("20060102-150405")+".zip")
-	f, e := os.Create(path)
+	base := "LogiMate-Config-" + time.Now().Format("20060102-150405")
+	path := filepath.Join(dir, base+".zip")
+	for i := 1; ; i++ {
+		if _, statErr := os.Stat(path); errors.Is(statErr, os.ErrNotExist) {
+			break
+		} else if statErr != nil {
+			return "", statErr
+		}
+		path = filepath.Join(dir, fmt.Sprintf("%s-%02d.zip", base, i))
+	}
+	f, e := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
 	if e != nil {
 		return "", e
 	}

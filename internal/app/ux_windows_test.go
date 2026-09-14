@@ -112,7 +112,7 @@ func TestWheelAttentionRequestsC294ModelConfirmation(t *testing.T) {
 	w := system.WheelDevice{ID: "usbloc:test", Name: "USB-Eingabegerät", Model: "Logitech C294 (Kompatibilitätsmodus)", Mode: "Generic HID / Modern", Supported: true}
 	s := system.State{Wheels: []system.WheelDevice{w}, SelectedWheelID: w.ID, WheelModel: w.Model, ActiveMode: w.Mode}
 	title, detail, _, _, visible := wheelAttentionCopy(s)
-	if !visible || !strings.Contains(title, "C294") || !strings.Contains(detail, "Modell") {
+	if !visible || !strings.Contains(title, "C294") || !strings.Contains(strings.ToLower(detail), "modell") {
 		t.Fatalf("C294 confirmation guidance missing: visible=%v title=%q detail=%q", visible, title, detail)
 	}
 	if got := overviewPrimaryAction(s); got != "Modell bestätigen" {

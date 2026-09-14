@@ -26,10 +26,10 @@ func TestConstantForceReportBoundsAndEncoding(t *testing.T) {
 	if !(left[3] < neutral[3] && neutral[3] <= right[3]) {
 		t.Fatalf("force translation not monotonic: %d %d %d", left[3], neutral[3], right[3])
 	}
-	if _, err := BuildClassicConstantForceReport(11, false); err == nil {
+	if _, err := BuildClassicConstantForceReport(NativeManualFFBTestMaxPercent+1, false); err == nil {
 		t.Fatal("unsafe positive force accepted")
 	}
-	if _, err := BuildClassicConstantForceReport(-11, false); err == nil {
+	if _, err := BuildClassicConstantForceReport(-(NativeManualFFBTestMaxPercent + 1), false); err == nil {
 		t.Fatal("unsafe negative force accepted")
 	}
 }
