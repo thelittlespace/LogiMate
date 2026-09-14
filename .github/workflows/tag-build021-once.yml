@@ -1,0 +1,36 @@
+name: Tag Build 021 once
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  tag-and-dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - name: Create exact Build 021 tag
+        env:
+          TARGET_SHA: fedd5fb05d0cfe1de96bc71ba4cba8d0bf020686
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          test "$(git rev-parse "$TARGET_SHA^{commit}")" = "$TARGET_SHA"
+          if git rev-parse -q --verify refs/tags/v0.0.1-alpha.021 >/dev/null; then
+            test "$(git rev-list -n 1 v0.0.1-alpha.021)" = "$TARGET_SHA"
+          else
+            git tag -a v0.0.1-alpha.021 "$TARGET_SHA" -m "LogiMate 0.0.1-alpha Build 021"
+            git push origin refs/tags/v0.0.1-alpha.021
+          fi
+      - name: Dispatch Release Candidate on tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run release-candidate.yml --ref v0.0.1-alpha.021
