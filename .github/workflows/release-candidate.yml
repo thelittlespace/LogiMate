@@ -90,7 +90,7 @@ jobs:
         shell: powershell
         run: |
           $att=Get-Content dist\RELEASE_ATTESTATION.json -Raw | ConvertFrom-Json
-          if ($att.version -ne '0.0.1-alpha' -or $att.build -ne '018') { throw 'Wrong release identity' }
+          if ($att.version -ne '0.0.1-alpha' -or $att.build -ne '019') { throw 'Wrong release identity' }
           if ($att.toolchain.goEnvVersion -ne 'go1.27.1') { throw "Wrong release Go: $($att.toolchain.goEnvVersion)" }
           if ($att.toolchain.powerShellVersion -ne '7.6.6') { throw "Wrong release PowerShell: $($att.toolchain.powerShellVersion)" }
       - name: Attest standalone application
@@ -120,13 +120,13 @@ jobs:
       - name: Attest complete release bundle
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: LogiMate-0.0.1-alpha-Build018-Go1.27.1-Release.zip
+          subject-path: LogiMate-0.0.1-alpha-Build019-Go1.27.1-Release.zip
       - name: Upload release candidate
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: LogiMate-${{ github.ref_name || 'manual' }}
           path: |
-            LogiMate-0.0.1-alpha-Build018-Go1.27.1-Release.zip
+            LogiMate-0.0.1-alpha-Build019-Go1.27.1-Release.zip
             dist/LogiMate.exe
             dist/LogiMate-Setup-x64.exe
             dist/LogiMate-Portable-x64.zip
@@ -135,9 +135,9 @@ jobs:
             dist/LogiMate-GitHub-Ready.zip
             dist/SHA256SUMS.txt
             dist/RELEASE_ATTESTATION.json
-            dist/Build018-Go1.27.1-Release-Gate.txt
+            dist/Build019-Go1.27.1-Release-Gate.txt
             dist/PACKAGE_VERIFICATION.txt
-            dist/LogiMate-0.0.1-alpha-Build018-Completion-Report.md
+            dist/LogiMate-0.0.1-alpha-Build019-Completion-Report.md
           if-no-files-found: error
           retention-days: 30
       - name: Publish GitHub prerelease
@@ -147,7 +147,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $assets = @(
-            'LogiMate-0.0.1-alpha-Build018-Go1.27.1-Release.zip',
+            'LogiMate-0.0.1-alpha-Build019-Go1.27.1-Release.zip',
             'dist/LogiMate.exe',
             'dist/LogiMate-Setup-x64.exe',
             'dist/LogiMate-Portable-x64.zip',
@@ -156,17 +156,17 @@ jobs:
             'dist/LogiMate-GitHub-Ready.zip',
             'dist/SHA256SUMS.txt',
             'dist/RELEASE_ATTESTATION.json',
-            'dist/Build018-Go1.27.1-Release-Gate.txt',
+            'dist/Build019-Go1.27.1-Release-Gate.txt',
             'dist/PACKAGE_VERIFICATION.txt',
-            'dist/LogiMate-0.0.1-alpha-Build018-Completion-Report.md'
+            'dist/LogiMate-0.0.1-alpha-Build019-Completion-Report.md'
           )
           gh release view "$env:GITHUB_REF_NAME" *> $null
           if ($LASTEXITCODE -eq 0) {
-            gh release edit "$env:GITHUB_REF_NAME" --title "LogiMate 0.0.1-alpha · Build 018" --notes-file RELEASE_NOTES.txt --prerelease
+            gh release edit "$env:GITHUB_REF_NAME" --title "LogiMate 0.0.1-alpha · Build 019" --notes-file RELEASE_NOTES.txt --prerelease
             if ($LASTEXITCODE -ne 0) { throw 'GitHub release metadata update failed' }
             gh release upload "$env:GITHUB_REF_NAME" @assets --clobber
             if ($LASTEXITCODE -ne 0) { throw 'GitHub release asset refresh failed' }
           } else {
-            gh release create "$env:GITHUB_REF_NAME" --title "LogiMate 0.0.1-alpha · Build 018" --notes-file RELEASE_NOTES.txt --prerelease @assets
+            gh release create "$env:GITHUB_REF_NAME" --title "LogiMate 0.0.1-alpha · Build 019" --notes-file RELEASE_NOTES.txt --prerelease @assets
             if ($LASTEXITCODE -ne 0) { throw 'GitHub prerelease creation failed' }
           }
