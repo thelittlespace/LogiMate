@@ -8,7 +8,7 @@ $Build=(Get-Content (Join-Path $PSScriptRoot 'BUILD') -Raw).Trim()
 if (-not $Version) { throw 'VERSION is empty' }
 if (-not $Build) { throw 'BUILD is empty' }
 
-# Build 021 toolchain gate. Public/reproducible release builds use the exact Go
+# Build 022 toolchain gate. Public/reproducible release builds use the exact Go
 # patch version declared by go.mod and a current PowerShell 7 build shell.
 $GoDirective = (Get-Content (Join-Path $PSScriptRoot 'go.mod') | Where-Object { $_ -match '^go\s+' } | Select-Object -First 1)
 if (-not $GoDirective) { throw 'go.mod has no go toolchain directive' }
@@ -16,7 +16,7 @@ $ExpectedGo = (($GoDirective -split '\s+')[1]).Trim()
 $ActualGo = (& go env GOVERSION).Trim() -replace '^go',''
 if ($ActualGo -ne $ExpectedGo) { throw "Go toolchain mismatch: expected $ExpectedGo from go.mod, got $ActualGo" }
 $ExpectedPowerShell = [version]'7.6.6'
-if ($PSVersionTable.PSVersion -ne $ExpectedPowerShell) { throw "PowerShell toolchain mismatch: expected exactly $ExpectedPowerShell for the Build 021 release pipeline; current=$($PSVersionTable.PSVersion)" }
+if ($PSVersionTable.PSVersion -ne $ExpectedPowerShell) { throw "PowerShell toolchain mismatch: expected exactly $ExpectedPowerShell for the Build 022 release pipeline; current=$($PSVersionTable.PSVersion)" }
 
 function Test-StableVersion {
     param([string]$Version)

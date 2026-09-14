@@ -1,4 +1,4 @@
-# LogiMate Build 021 reproducible Windows release bootstrap.
+# LogiMate Build 022 reproducible Windows release bootstrap.
 # This script is intentionally compatible with Windows PowerShell 5.1 so it can
 # bootstrap the pinned release toolchain without changing machine-wide installs.
 [CmdletBinding()]
@@ -29,7 +29,7 @@ $Cache = Join-Path $Tools 'cache'
 $GoHome = Join-Path $Tools 'go'
 $PwshHome = Join-Path $Tools 'pwsh'
 $ReportDir = Join-Path $Root 'release-gate'
-$Transcript = Join-Path $ReportDir 'Build021-Go1.27.1-Release-Gate.txt'
+$Transcript = Join-Path $ReportDir 'Build022-Go1.27.1-Release-Gate.txt'
 
 function Write-Step([string]$Text) {
     Write-Host "`n==> $Text" -ForegroundColor Cyan
@@ -41,16 +41,63 @@ function Get-VerifiedArchive {
         [Parameter(Mandatory=$true)][string]$Path,
         [Parameter(Mandatory=$true)][string]$Sha256
     )
-    if (-not (Test-Path -LiteralPath $Path)) {
-        Write-Host "Downloading $Url"
-        Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Path
-    }
-    $actual = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
-    if ($actual -ne $Sha256.ToLowerInvariant()) {
+    $expected = $Sha256.ToLowerInvariant()
+    if (Test-Path -LiteralPath $Path) {
+        $cached = (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($cached -eq $expected) {
+            Write-Host "Using verified cached archive: $([IO.Path]::GetFileName($Path))"
+            Write-Host "Verified SHA-256: $cached"
+            return
+        }
+        Write-Warning "Cached archive hash mismatch; deleting $Path"
         Remove-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
-        throw "SHA-256 verification failed for $([IO.Path]::GetFileName($Path)). Expected $Sha256, got $actual"
     }
-    Write-Host "Verified SHA-256: $actual"
+
+    $urls = @($Url)
+    if ($Url.StartsWith('https://go.dev/dl/', [StringComparison]::OrdinalIgnoreCase)) {
+        $urls += $Url.Replace('https://go.dev/dl/', 'https://dl.google.com/go/')
+    }
+
+    $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
+    $downloaded = $false
+    foreach ($candidate in $urls) {
+        for ($attempt = 1; $attempt -le 2; $attempt++) {
+            $partial = "$Path.part"
+            Remove-Item -LiteralPath $partial -Force -ErrorAction SilentlyContinue
+            Write-Host "Downloading $candidate (attempt $attempt/2)"
+            $exitCode = 1
+            if ($null -ne $curl) {
+                & $curl.Source --fail --location --progress-bar --connect-timeout 15 --max-time 180 --speed-time 30 --speed-limit 1024 --retry 1 --retry-delay 2 --retry-all-errors --output $partial $candidate
+                $exitCode = $LASTEXITCODE
+            } else {
+                try {
+                    Invoke-WebRequest -UseBasicParsing -Uri $candidate -OutFile $partial -TimeoutSec 180
+                    $exitCode = 0
+                } catch {
+                    Write-Warning "Download attempt failed: $($_.Exception.Message)"
+                    $exitCode = 1
+                }
+            }
+
+            if ($exitCode -eq 0 -and (Test-Path -LiteralPath $partial -PathType Leaf)) {
+                $actual = (Get-FileHash -LiteralPath $partial -Algorithm SHA256).Hash.ToLowerInvariant()
+                if ($actual -eq $expected) {
+                    Move-Item -LiteralPath $partial -Destination $Path -Force
+                    Write-Host "Verified SHA-256: $actual"
+                    $downloaded = $true
+                    break
+                }
+                Write-Warning "Downloaded archive SHA-256 mismatch. Expected $expected, got $actual"
+            } else {
+                Write-Warning "Download failed or timed out (exit code $exitCode): $candidate"
+            }
+            Remove-Item -LiteralPath $partial -Force -ErrorAction SilentlyContinue
+        }
+        if ($downloaded) { break }
+    }
+    if (-not $downloaded) {
+        throw "Unable to download and verify $([IO.Path]::GetFileName($Path)) after bounded retries"
+    }
 }
 
 function Reset-Directory([string]$Path) {
@@ -94,7 +141,7 @@ Write-Step 'Verify source release identity'
 $version = (Get-Content (Join-Path $Root 'VERSION') -Raw).Trim()
 $build = (Get-Content (Join-Path $Root 'BUILD') -Raw).Trim()
 if ($version -ne '0.0.1-alpha') { throw "Unexpected visible VERSION '$version'; expected 0.0.1-alpha" }
-if ($build -ne '021') { throw "Unexpected BUILD '$build'; expected 021" }
+if ($build -ne '022') { throw "Unexpected BUILD '$build'; expected 021" }
 $goDirective = (Get-Content (Join-Path $Root 'go.mod') | Where-Object { $_ -match '^go\s+' } | Select-Object -First 1)
 if (-not $goDirective) { throw 'go.mod has no go directive' }
 $goDirectiveVersion = (($goDirective -split '\s+')[1]).Trim()
@@ -143,7 +190,7 @@ Set-Location '$escapedRoot'
 `$env:PATH=(Join-Path '$escapedGoRoot' 'bin') + ';' + `$env:PATH
 `$env:GOTOOLCHAIN='local'
 `$env:GOFLAGS='-buildvcs=false'
-# Build 021 is an unsigned alpha release unless a later signing-specific pipeline is used.
+# Build 022 is an unsigned alpha release unless a later signing-specific pipeline is used.
 # Clear ambient signing variables so local machine state cannot change reproducibility.
 `$env:LOGIMATE_SIGN_THUMBPRINT=''
 `$env:LOGIMATE_TIMESTAMP_URL=''
@@ -220,14 +267,14 @@ if ($sourceInstaller -ne $finalInstaller) { throw "Source archive rebuild does n
 Write-Step 'Verify release attestation reports the real toolchain'
 $attPath = Join-Path $Root 'dist\RELEASE_ATTESTATION.json'
 $att = Get-Content $attPath -Raw | ConvertFrom-Json
-if ($att.version -ne '0.0.1-alpha' -or $att.build -ne '021') { throw 'Release attestation has wrong release identity' }
+if ($att.version -ne '0.0.1-alpha' -or $att.build -ne '022') { throw 'Release attestation has wrong release identity' }
 if ($att.toolchain.goEnvVersion -ne 'go1.27.1') { throw "Attestation did not record go1.27.1: $($att.toolchain.goEnvVersion)" }
 if ($att.toolchain.powerShellVersion -ne '7.6.6') { throw "Attestation did not record PowerShell 7.6.6: $($att.toolchain.powerShellVersion)" }
 
 Write-Step 'Write local release gate transcript'
 $hashLines = Get-Content (Join-Path $Root 'dist\SHA256SUMS.txt')
 @(
-    'LogiMate Build 021 release gate',
+    'LogiMate Build 022 release gate',
     "Visible version: $version",
     "Internal build: $build",
     "Go: $goVersionText",
@@ -243,11 +290,11 @@ $hashLines = Get-Content (Join-Path $Root 'dist\SHA256SUMS.txt')
     'Release package hashes:',
     $hashLines
 ) | Set-Content -LiteralPath $Transcript -Encoding UTF8
-Copy-Item -LiteralPath $Transcript -Destination (Join-Path $Root 'dist\Build021-Go1.27.1-Release-Gate.txt') -Force
+Copy-Item -LiteralPath $Transcript -Destination (Join-Path $Root 'dist\Build022-Go1.27.1-Release-Gate.txt') -Force
 
 $verificationPath = Join-Path $Root 'dist\PACKAGE_VERIFICATION.txt'
 @(
-    'LogiMate 0.0.1-alpha · Build 021',
+    'LogiMate 0.0.1-alpha · Build 022',
     'Package verification',
     '',
     'Go 1.27.1 exact toolchain: PASS',
@@ -267,14 +314,14 @@ $verificationPath = Join-Path $Root 'dist\PACKAGE_VERIFICATION.txt'
     '',
     "Application SHA-256: $firstApp",
     "Installer SHA-256: $firstInstaller",
-    'Both source-rebuilt files are byte-identical to the Build 021 release binaries.'
+    'Both source-rebuilt files are byte-identical to the Build 022 release binaries.'
 ) | Set-Content -LiteralPath $verificationPath -Encoding UTF8
 
-$completionPath = Join-Path $Root 'dist\LogiMate-0.0.1-alpha-Build021-Completion-Report.md'
+$completionPath = Join-Path $Root 'dist\LogiMate-0.0.1-alpha-Build022-Completion-Report.md'
 @(
-    '# LogiMate 0.0.1-alpha · Build 021 — completion report',
+    '# LogiMate 0.0.1-alpha · Build 022 — completion report',
     '',
-    '## Completed in Build 021',
+    '## Completed in Build 022',
     '',
     '- complete re-audit of the verified Build 017 publication-candidate baseline',
     '- automatic Memory Integrity/HVCI mutation removed; status opens Windows Security only',
@@ -307,10 +354,10 @@ $completionPath = Join-Path $Root 'dist\LogiMate-0.0.1-alpha-Build021-Completion
     '- final clean-machine/manual Windows UI matrix where hardware or human observation is required',
     '- Authenticode publisher signing unless a real signing identity is configured',
     '',
-    'Build 021 remains `0.0.1-alpha` and is published as a prerelease, not a stable fully certified release.'
+    'Build 022 remains `0.0.1-alpha` and is published as a prerelease, not a stable fully certified release.'
 ) | Set-Content -LiteralPath $completionPath -Encoding UTF8
 
-$releaseZip = Join-Path $Root 'LogiMate-0.0.1-alpha-Build021-Go1.27.1-Release.zip'
+$releaseZip = Join-Path $Root 'LogiMate-0.0.1-alpha-Build022-Go1.27.1-Release.zip'
 if (Test-Path $releaseZip) { Remove-Item $releaseZip -Force }
 $releaseStage = Join-Path $ReportDir 'release-package'
 Reset-Directory $releaseStage
