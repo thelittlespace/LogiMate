@@ -1,0 +1,33 @@
+name: Tag Build 020 once
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  tag-and-dispatch:
+    if: github.event.head_commit.message == 'Add one-shot Build 020 tag and dispatch helper'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - name: Create exact Build 020 tag
+        env:
+          TARGET_SHA: 2b9b2b2d834b833d1d36fb1b8d4aeb88f98aaf04
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git rev-parse "refs/tags/v0.0.1-alpha.020" >/dev/null 2>&1; then
+            git tag -a v0.0.1-alpha.020 "$TARGET_SHA" -m "LogiMate 0.0.1-alpha Build 020"
+            git push origin v0.0.1-alpha.020
+          fi
+      - name: Dispatch Release Candidate on tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run release-candidate.yml --ref v0.0.1-alpha.020
