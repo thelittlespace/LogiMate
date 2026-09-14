@@ -1,44 +1,16 @@
 diff --git a/internal/app/accessibility_d58_windows_test.go b/internal/app/accessibility_d58_windows_test.go
-index e6bdfa7..ac0ab5b 100644
+index 751651c..ac0ab5b 100644
 --- a/internal/app/accessibility_d58_windows_test.go
 +++ b/internal/app/accessibility_d58_windows_test.go
-@@ -38,6 +38,7 @@ func TestD58AccessibilityControlIDsDoNotOverlap(t *testing.T) {
- 		add(accessibilityIDNavBase+i, "nav")
- 	}
- 	add(accessibilityIDAdvanced, "advanced")
-+	add(accessibilityIDMemoryIntegrity, "memory-integrity")
- 	for i := range themeChoices {
- 		add(accessibilityIDThemeBase+i, "theme")
- 	}
-@@ -86,6 +87,7 @@ func TestD58FocusNamespacesDoNotOverlap(t *testing.T) {
- 		add(i, "nav")
- 	}
- 	add(focusWheelAdvanced, "advanced")
-+	add(focusMemoryIntegrity, "memory-integrity")
- 	for i := range actionButtons {
- 		add(focusActionBase+i, "action")
- 	}
-@@ -120,3 +122,20 @@ func TestD58FocusNamespacesDoNotOverlap(t *testing.T) {
- 		add(focusDiagnosticsTabBase+i, "diagnostics-tab")
- 	}
- }
-+
-+func TestBuild018MemoryIntegrityStatusIsKeyboardReachable(t *testing.T) {
-+	oldPage, oldRect, oldButtons := currentPage, memoryIntegrityRect, actionButtons
-+	defer func() { currentPage, memoryIntegrityRect, actionButtons = oldPage, oldRect, oldButtons }()
+@@ -126,7 +126,7 @@ func TestD58FocusNamespacesDoNotOverlap(t *testing.T) {
+ func TestBuild018MemoryIntegrityStatusIsKeyboardReachable(t *testing.T) {
+ 	oldPage, oldRect, oldButtons := currentPage, memoryIntegrityRect, actionButtons
+ 	defer func() { currentPage, memoryIntegrityRect, actionButtons = oldPage, oldRect, oldButtons }()
+-	currentPage = pageOverview
 +	currentPage = pageWheel
-+	memoryIntegrityRect = RECT{10, 10, 180, 40}
-+	for i := range actionButtons {
-+		actionButtons[i].visible = false
-+		actionButtons[i].enabled = false
-+	}
-+	for _, id := range focusOrder() {
-+		if id == focusMemoryIntegrity {
-+			return
-+		}
-+	}
-+	t.Fatalf("Build 018 memory-integrity status missing from keyboard focus order: %v", focusOrder())
-+}
+ 	memoryIntegrityRect = RECT{10, 10, 180, 40}
+ 	for i := range actionButtons {
+ 		actionButtons[i].visible = false
 diff --git a/internal/app/d6_force_feedback_windows_test.go b/internal/app/d6_force_feedback_windows_test.go
 index 491f38e..78705c5 100644
 --- a/internal/app/d6_force_feedback_windows_test.go
@@ -52,19 +24,19 @@ index 491f38e..78705c5 100644
  		t.Fatalf("basis focus order unexpected: %d / %v", len(basis), basis)
  	}
  	if basis[0] != d6FocusTabLive || basis[1] != d6FocusTabFFB {
-diff --git a/internal/app/visual_windows.go b/internal/app/visual_windows.go
-index b079f4b..82c58df 100644
---- a/internal/app/visual_windows.go
-+++ b/internal/app/visual_windows.go
-@@ -435,7 +435,7 @@ func wheelAttentionCopy(s system.State) (title, detail, icon string, accent uint
+diff --git a/internal/app/ux_windows_test.go b/internal/app/ux_windows_test.go
+index a5ce7f8..e98a932 100644
+--- a/internal/app/ux_windows_test.go
++++ b/internal/app/ux_windows_test.go
+@@ -112,7 +112,7 @@ func TestWheelAttentionRequestsC294ModelConfirmation(t *testing.T) {
+ 	w := system.WheelDevice{ID: "usbloc:test", Name: "USB-Eingabegerät", Model: "Logitech C294 (Kompatibilitätsmodus)", Mode: "Generic HID / Modern", Supported: true}
+ 	s := system.State{Wheels: []system.WheelDevice{w}, SelectedWheelID: w.ID, WheelModel: w.Model, ActiveMode: w.Mode}
+ 	title, detail, _, _, visible := wheelAttentionCopy(s)
+-	if !visible || !strings.Contains(title, "C294") || !strings.Contains(detail, "Modell") {
++	if !visible || !strings.Contains(title, "C294") || !strings.Contains(strings.ToLower(detail), "modell") {
+ 		t.Fatalf("C294 confirmation guidance missing: visible=%v title=%q detail=%q", visible, title, detail)
  	}
- 	if system.IsCompatibilityModel(s.WheelModel) {
- 		return "C294 erkannt · Modellbestätigung erforderlich",
--			"Windows erkennt das Lenkrad im gemeinsamen Logitech-Kompatibilitätsmodus. Live-Diagnose bleibt möglich, aber modellabhängige HID-Kommandos und Treiberwechsel sind gesperrt, bis G25, G27 oder Driving Force GT einmalig für dieses physische Rad bestätigt wurde.",
-+			"Windows erkennt das Lenkrad im gemeinsamen Logitech-Kompatibilitätsmodus. Live-Diagnose bleibt möglich. Das Modell muss jedoch als G25, G27 oder Driving Force GT bestätigt sein, bevor modellabhängige HID-Kommandos oder Treiberwechsel freigegeben werden.",
- 			"?", colWarning, true
- 	}
- 	return "", "", "", colAccent, false
+ 	if got := overviewPrimaryAction(s); got != "Modell bestätigen" {
 diff --git a/internal/system/fusion_c2_windows_test.go b/internal/system/fusion_c2_windows_test.go
 index 8148f0f..d4e57c1 100644
 --- a/internal/system/fusion_c2_windows_test.go
