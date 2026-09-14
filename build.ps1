@@ -2,12 +2,13 @@ $ErrorActionPreference = 'Stop'
 $env:CGO_ENABLED='0'
 $env:GOOS='windows'
 $env:GOARCH='amd64'
+$env:GOFLAGS='-buildvcs=false'
 $Version=(Get-Content (Join-Path $PSScriptRoot 'VERSION') -Raw).Trim()
 $Build=(Get-Content (Join-Path $PSScriptRoot 'BUILD') -Raw).Trim()
 if (-not $Version) { throw 'VERSION is empty' }
 if (-not $Build) { throw 'BUILD is empty' }
 
-# Build 019 toolchain gate. Public/reproducible release builds use the exact Go
+# Build 020 toolchain gate. Public/reproducible release builds use the exact Go
 # patch version declared by go.mod and a current PowerShell 7 build shell.
 $GoDirective = (Get-Content (Join-Path $PSScriptRoot 'go.mod') | Where-Object { $_ -match '^go\s+' } | Select-Object -First 1)
 if (-not $GoDirective) { throw 'go.mod has no go toolchain directive' }
@@ -15,7 +16,7 @@ $ExpectedGo = (($GoDirective -split '\s+')[1]).Trim()
 $ActualGo = (& go env GOVERSION).Trim() -replace '^go',''
 if ($ActualGo -ne $ExpectedGo) { throw "Go toolchain mismatch: expected $ExpectedGo from go.mod, got $ActualGo" }
 $ExpectedPowerShell = [version]'7.6.6'
-if ($PSVersionTable.PSVersion -ne $ExpectedPowerShell) { throw "PowerShell toolchain mismatch: expected exactly $ExpectedPowerShell for the Build 019 release pipeline; current=$($PSVersionTable.PSVersion)" }
+if ($PSVersionTable.PSVersion -ne $ExpectedPowerShell) { throw "PowerShell toolchain mismatch: expected exactly $ExpectedPowerShell for the Build 020 release pipeline; current=$($PSVersionTable.PSVersion)" }
 
 function Test-StableVersion {
     param([string]$Version)
@@ -248,6 +249,7 @@ if ($Stable) {
 $env:GOARCH='arm64'
 go build -trimpath -ldflags "-H=windowsgui -s -w -X main.version=$Version -X main.buildID=$Build" -o LogiMate-arm64-validation.exe ./cmd/logimate
 $env:GOARCH='amd64'
+$env:GOFLAGS='-buildvcs=false'
 
 New-ReleaseAttestation -Version $Version -Build $Build -Stable $Stable -AppSigned $AppSigned -InstallerSigned $InstallerSigned
 if ($Stable) {
@@ -277,3 +279,4 @@ Get-FileHash dist/LogiMate.exe,dist/LogiMate-Setup-x64.exe,dist/LogiMate-Portabl
     Set-Content dist/SHA256SUMS.txt
 
 Write-Host "LogiMate $Version · Build $Build complete. Stable=$Stable AppSigned=$AppSigned InstallerSigned=$InstallerSigned"
+
