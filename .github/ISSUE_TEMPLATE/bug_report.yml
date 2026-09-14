@@ -1,0 +1,57 @@
+name: Bug report
+description: Report a reproducible LogiMate software problem
+title: "[Bug]: "
+labels: [bug, needs-triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve LogiMate. Do not post secrets or unredacted diagnostic identifiers.
+  - type: input
+    id: build
+    attributes:
+      label: LogiMate build
+      placeholder: 0.0.1-alpha · Build 017
+    validations:
+      required: true
+  - type: dropdown
+    id: wheel
+    attributes:
+      label: Wheel
+      options: [Logitech G27, Logitech G25, Logitech Driving Force GT, No wheel / UI-only, Other]
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 24H2 x64
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Expected result and actual result.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      placeholder: "1. ...\n2. ...\n3. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Paste only the redacted LogiMate diagnostic output that is relevant.
+      render: text
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed secrets, personal paths and raw hardware identifiers from the report.
+          required: true

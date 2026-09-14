@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go-quality:
+    name: Go format, unit and race tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Verify gofmt
+        shell: bash
+        run: |
+          test -z "$(gofmt -l .)" || { echo "Files need gofmt:"; gofmt -l .; exit 1; }
+      - name: Unit tests
+        run: go test ./...
+      - name: Race tests for cross-platform engine packages
+        run: go test -race ./internal/wheelengine ./internal/openg27port ./internal/gameadapter
+
+  windows-amd64:
+    name: Windows amd64 vet, test, build and smoke
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Vet
+        run: go vet -unsafeptr=false ./...
+      - name: Tests
+        run: go test ./...
+      - name: Build application
+        shell: pwsh
+        run: |
+          $v=(Get-Content VERSION -Raw).Trim()
+          go build -trimpath -ldflags "-H=windowsgui -X main.version=$v -X main.buildID=ci" -o LogiMate.exe ./cmd/logimate
+      - name: Startup smoke test
+        shell: pwsh
+        run: |
+          $p=Start-Process .\LogiMate.exe -ArgumentList '--smoke-test' -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "Smoke test failed: $($p.ExitCode)" }
+      - name: Build installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force cmd/installer/payload | Out-Null
+          Copy-Item LogiMate.exe cmd/installer/payload/LogiMate.exe -Force
+          $v=(Get-Content VERSION -Raw).Trim()
+          go vet -unsafeptr=false -tags installer ./cmd/installer
+          go build -tags installer -trimpath -ldflags "-H=windowsgui -X main.version=$v -X main.buildID=ci" -o LogiMate-Setup-x64.exe ./cmd/installer
+          Remove-Item cmd/installer/payload/LogiMate.exe -Force
+      - name: Upload CI binaries
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: windows-amd64-ci
+          path: |
+            LogiMate.exe
+            LogiMate-Setup-x64.exe
+          if-no-files-found: error
+          retention-days: 7
+
+  windows-arm64-compile:
+    name: Windows arm64 compile gate
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Compile application for arm64
+        shell: pwsh
+        run: |
+          $env:GOARCH='arm64'
+          $v=(Get-Content VERSION -Raw).Trim()
+          go build -trimpath -ldflags "-H=windowsgui -X main.version=$v -X main.buildID=ci" -o LogiMate-arm64.exe ./cmd/logimate

@@ -1,0 +1,22 @@
+LogiMate 0.0.1-alpha · Build 018 — Hardened Alpha Release
+
+Build 018 is a complete re-audit of the verified Build 017 publication-candidate baseline. The visible product version remains 0.0.1-alpha; only the internal build identity advances to 018.
+
+Highlights
+- automatic Memory Integrity/HVCI mutation removed; the status now opens Windows Security only
+- portable updater, uninstall authorization and diagnostic privacy hardening
+- additional global-state synchronization and setup deadlock regression fix
+- current UI/reference terminology cleaned while historical audit records remain historical
+- Go release toolchain pinned to exact stable Go 1.27.1
+- PowerShell release shell pinned to exact stable/LTS PowerShell 7.6.6
+- current GitHub Actions remain full-SHA pinned
+- release attestation records the actual Go and PowerShell versions used
+- one-click Windows release bootstrap verifies official toolchain SHA-256 values before use
+- release bootstrap rebuilds app and installer twice and requires byte-identical outputs
+
+Release status
+This remains an alpha/pre-release. It is not a stable or fully hardware-certified release. G27 LED/FFB evidence remains real, while the remaining G27 adverse lifecycle matrix and physical G25/DFGT certification still require real hardware. Code signing is not claimed unless a real signing identity is configured.
+
+Repository/release packaging
+- complete Build 018 asset set: standalone x64, installer x64, portable x64, ARM64 validation, source and GitHub-ready archives
+- tag v0.0.1-alpha.018 publishes a GitHub prerelease only after quality, CodeQL, reproducibility and provenance gates pass

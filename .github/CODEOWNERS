@@ -1,0 +1,7 @@
+* @thelittlespace
+
+# Safety-sensitive areas stay explicitly owned by the maintainer.
+/internal/system/native_* @thelittlespace
+/internal/system/*migration* @thelittlespace
+/internal/system/update_windows.go @thelittlespace
+/build.ps1 @thelittlespace

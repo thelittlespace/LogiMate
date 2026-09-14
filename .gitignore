@@ -1,0 +1,41 @@
+# Build outputs
+LogiMate.exe
+LogiMate-Setup-x64.exe
+LogiMate-*.zip
+LogiMate-*.zip.sha256
+RELEASE_ATTESTATION.json
+SHA256SUMS*.txt
+PACKAGE_VERIFICATION*.txt
+cmd/installer/payload/LogiMate.exe
+
+# Go
+*.test
+*.out
+coverage*.txt
+
+# Local tools / IDE
+.vscode/
+.idea/
+*.user
+*.suo
+.DS_Store
+Thumbs.db
+
+# Local signing or secrets — never commit
+*.pfx
+*.p12
+*.pem
+*.key
+.env
+.env.*
+!*.env.example
+
+# Temporary audit/build directories
+_dist/
+dist/
+build/
+tmp/
+
+# Build 018 verified release bootstrap outputs
+.release-tools/
+release-gate/

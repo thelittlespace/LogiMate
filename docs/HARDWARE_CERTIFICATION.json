@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 2,
+  "release": "0.0.1-alpha",
+  "hardwareMatrixValidated": false,
+  "crashRecoveryValidated": false,
+  "migrationValidated": false,
+  "uiAccessibilityValidated": false,
+  "hidStressValidated": false,
+  "perModel": {
+    "g25": {
+      "validated": false,
+      "evidence": []
+    },
+    "g27": {
+      "validated": false,
+      "evidence": [
+        "2026-09-14 · Build 011/010 real G27: RPM LED output ping confirmed; Constant Force, Spring, Damper, Friction and Autocenter manual tests confirmed physically responsive by tester. Full wheel certification remains open."
+      ]
+    },
+    "dfgt": {
+      "validated": false,
+      "evidence": []
+    }
+  },
+  "evidence": [
+    "2026-09-14 · Build 011/010 real G27: RPM LED output ping confirmed; Constant Force, Spring, Damper, Friction and Autocenter manual tests confirmed physically responsive by tester. Full wheel certification remains open."
+  ]
+}

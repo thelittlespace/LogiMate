@@ -1,0 +1,46 @@
+name: Hardware compatibility report
+description: Report G25/G27/Driving Force GT test results
+title: "[Hardware]: "
+labels: [hardware, needs-triage]
+body:
+  - type: dropdown
+    id: wheel
+    attributes:
+      label: Wheel model
+      options: [Logitech G27, Logitech G25, Logitech Driving Force GT]
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: LogiMate build
+      placeholder: 0.0.1-alpha · Build 017
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: Windows version / architecture
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Operating mode
+      options: [Modern / Generic HID, Logitech Legacy, Both tested]
+    validations:
+      required: true
+  - type: textarea
+    id: matrix
+    attributes:
+      label: Results
+      description: Include detection, input, calibration, range, Constant/Spring/Damper/Friction/Autocenter, Emergency Stop and reconnect results.
+    validations:
+      required: true
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: Hardware safety
+      options:
+        - label: I tested only within the limits exposed by LogiMate and did not bypass its safety caps.
+          required: true
