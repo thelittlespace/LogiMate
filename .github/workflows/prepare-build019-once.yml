@@ -35,7 +35,6 @@ jobs:
               p.write_text(s, encoding='utf-8', newline='\n')
 
           Path('BUILD').write_text('019\n', encoding='utf-8', newline='\n')
-
           replace_file('Build-Release-Go1271.ps1', [
               ("$rootFull = [IO.Path]::GetFullPath($Root).TrimEnd('\\\\') + '\\\\'", "$rootFull = [IO.Path]::GetFullPath($Root).TrimEnd([char[]]@([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)) + [IO.Path]::DirectorySeparatorChar"),
               ('Build 018', 'Build 019'),
@@ -44,11 +43,6 @@ jobs:
               ("$att.build -ne '018'", "$att.build -ne '019'"),
           ])
           replace_file('build.ps1', [('Build 018', 'Build 019')])
-          replace_file('.github/workflows/release-candidate.yml', [
-              ('Build 018', 'Build 019'),
-              ('Build018', 'Build019'),
-              ("$att.build -ne '018'", "$att.build -ne '019'"),
-          ])
           replace_file('RELEASE_NOTES.txt', [
               ('Build 018', 'Build 019'),
               ('advances to 018', 'advances to 019'),
@@ -61,7 +55,7 @@ jobs:
           for line in manifest.read_text(encoding='utf-8').splitlines():
               if not line or line.startswith('#'):
                   continue
-              digest, rel = line.split('  ', 1)
+              _, rel = line.split('  ', 1)
               paths.append(rel)
           out = []
           for rel in paths:
@@ -84,6 +78,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add BUILD Build-Release-Go1271.ps1 build.ps1 .github/workflows/release-candidate.yml RELEASE_NOTES.txt README.md SOURCE_MANIFEST_SHA256.txt
+          git add BUILD Build-Release-Go1271.ps1 build.ps1 RELEASE_NOTES.txt README.md SOURCE_MANIFEST_SHA256.txt
           git commit -m "Prepare Build 019 release pipeline"
           git push origin HEAD:release/build019
