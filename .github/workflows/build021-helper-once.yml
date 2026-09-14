@@ -1,0 +1,63 @@
+name: Build 021 helper once
+
+on:
+  push:
+    branches:
+      - tmp/build021-helper
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: release/build021
+          fetch-depth: 0
+      - name: Prepare Build 021 release sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib
+
+          Path('BUILD').write_text('021\n', encoding='utf-8')
+
+          p = Path('Build-Release-Go1271.ps1')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('Build 020', 'Build 021').replace('Build020', 'Build021')
+          s = s.replace("if ($build -ne '019') { throw \"Unexpected BUILD '$build'; expected 018\" }", "if ($build -ne '021') { throw \"Unexpected BUILD '$build'; expected 021\" }")
+          s = s.replace("$att.build -ne '019'", "$att.build -ne '021'")
+          s = s.replace("`$env:GOTOOLCHAIN='local'\n$env:GOFLAGS='-buildvcs=false'", "`$env:GOTOOLCHAIN='local'\n`$env:GOFLAGS='-buildvcs=false'")
+          p.write_text(s, encoding='utf-8')
+
+          p = Path('build.ps1')
+          s = p.read_text(encoding='utf-8').replace('Build 020', 'Build 021')
+          p.write_text(s, encoding='utf-8')
+
+          for name in ('README.md','RELEASE_NOTES.txt'):
+              p = Path(name)
+              if p.exists():
+                  s = p.read_text(encoding='utf-8').replace('Build 020', 'Build 021').replace('Build020', 'Build021')
+                  p.write_text(s, encoding='utf-8')
+
+          manifest = Path('SOURCE_MANIFEST_SHA256.txt')
+          out = []
+          for raw in manifest.read_text(encoding='utf-8').splitlines():
+              if not raw.strip() or raw.startswith('#'):
+                  out.append(raw)
+                  continue
+              _, rel = raw.split('  ', 1)
+              data = Path(rel).read_bytes()
+              out.append(hashlib.sha256(data).hexdigest() + '  ' + rel)
+          manifest.write_text('\n'.join(out) + '\n', encoding='utf-8')
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add BUILD Build-Release-Go1271.ps1 build.ps1 README.md RELEASE_NOTES.txt SOURCE_MANIFEST_SHA256.txt
+          git commit -m "Prepare Build 021 release identity"
+          git push origin HEAD:release/build021
