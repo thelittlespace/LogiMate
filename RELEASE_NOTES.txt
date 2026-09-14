@@ -1,6 +1,6 @@
-LogiMate 0.0.1-alpha · Build 018 — Hardened Alpha Release
+LogiMate 0.0.1-alpha · Build 019 — Hardened Alpha Release
 
-Build 018 is a complete re-audit of the verified Build 017 publication-candidate baseline. The visible product version remains 0.0.1-alpha; only the internal build identity advances to 018.
+Build 019 is a complete re-audit of the verified Build 017 publication-candidate baseline. The visible product version remains 0.0.1-alpha; only the internal build identity advances to 019.
 
 Highlights
 - automatic Memory Integrity/HVCI mutation removed; the status now opens Windows Security only
@@ -18,5 +18,5 @@ Release status
 This remains an alpha/pre-release. It is not a stable or fully hardware-certified release. G27 LED/FFB evidence remains real, while the remaining G27 adverse lifecycle matrix and physical G25/DFGT certification still require real hardware. Code signing is not claimed unless a real signing identity is configured.
 
 Repository/release packaging
-- complete Build 018 asset set: standalone x64, installer x64, portable x64, ARM64 validation, source and GitHub-ready archives
-- tag v0.0.1-alpha.018 publishes a GitHub prerelease only after quality, CodeQL, reproducibility and provenance gates pass
+- complete Build 019 asset set: standalone x64, installer x64, portable x64, ARM64 validation, source and GitHub-ready archives
+- tag v0.0.1-alpha.019 publishes a GitHub prerelease only after quality, CodeQL, reproducibility and provenance gates pass
