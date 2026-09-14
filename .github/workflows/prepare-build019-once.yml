@@ -1,0 +1,89 @@
+name: Prepare Build 019 once
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: release/build019
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Prepare Build 019 and repair manifest path gate
+        shell: python
+        run: |
+          from pathlib import Path
+          import hashlib
+
+          def replace_file(path, replacements):
+              p = Path(path)
+              s = p.read_text(encoding='utf-8')
+              for old, new in replacements:
+                  if old not in s:
+                      print(f'warning: {old!r} not found in {path}')
+                  s = s.replace(old, new)
+              p.write_text(s, encoding='utf-8', newline='\n')
+
+          Path('BUILD').write_text('019\n', encoding='utf-8', newline='\n')
+
+          replace_file('Build-Release-Go1271.ps1', [
+              ("$rootFull = [IO.Path]::GetFullPath($Root).TrimEnd('\\\\') + '\\\\'", "$rootFull = [IO.Path]::GetFullPath($Root).TrimEnd([char[]]@([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)) + [IO.Path]::DirectorySeparatorChar"),
+              ('Build 018', 'Build 019'),
+              ('Build018', 'Build019'),
+              ("$build -ne '018'", "$build -ne '019'"),
+              ("$att.build -ne '018'", "$att.build -ne '019'"),
+          ])
+          replace_file('build.ps1', [('Build 018', 'Build 019')])
+          replace_file('.github/workflows/release-candidate.yml', [
+              ('Build 018', 'Build 019'),
+              ('Build018', 'Build019'),
+              ("$att.build -ne '018'", "$att.build -ne '019'"),
+          ])
+          replace_file('RELEASE_NOTES.txt', [
+              ('Build 018', 'Build 019'),
+              ('advances to 018', 'advances to 019'),
+              ('v0.0.1-alpha.018', 'v0.0.1-alpha.019'),
+          ])
+          replace_file('README.md', [('Build 018', 'Build 019'), ('Build018', 'Build019')])
+
+          manifest = Path('SOURCE_MANIFEST_SHA256.txt')
+          paths = []
+          for line in manifest.read_text(encoding='utf-8').splitlines():
+              if not line or line.startswith('#'):
+                  continue
+              digest, rel = line.split('  ', 1)
+              paths.append(rel)
+          out = []
+          for rel in paths:
+              p = Path(rel)
+              if not p.is_file():
+                  raise SystemExit(f'manifest file missing: {rel}')
+              out.append(f"{hashlib.sha256(p.read_bytes()).hexdigest()}  {rel}")
+          manifest.write_text('\n'.join(out) + '\n', encoding='utf-8', newline='\n')
+          print(f'regenerated manifest for {len(out)} files')
+      - name: Validate Build 019 source
+        shell: bash
+        run: |
+          test "$(go env GOVERSION)" = "go1.27.1"
+          test "$(cat BUILD)" = "019"
+          test -z "$(gofmt -l cmd internal)"
+          go test ./...
+          git diff --check
+      - name: Commit Build 019 preparation
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add BUILD Build-Release-Go1271.ps1 build.ps1 .github/workflows/release-candidate.yml RELEASE_NOTES.txt README.md SOURCE_MANIFEST_SHA256.txt
+          git commit -m "Prepare Build 019 release pipeline"
+          git push origin HEAD:release/build019
