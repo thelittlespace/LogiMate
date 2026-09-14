@@ -1,0 +1,40 @@
+name: Apply reviewed fix branch patch once
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: fix/windows-amd64-tests
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Apply reviewed Windows regression patch
+        shell: bash
+        run: |
+          test "$(go env GOVERSION)" = "go1.27.1"
+          git apply --check .github/windows-amd64-tests.patch
+          git apply .github/windows-amd64-tests.patch
+          rm -f .github/windows-amd64-tests.patch
+          rm -f .github/workflows/apply-windows-amd64-hotfix.yml
+          gofmt -w internal/app internal/system
+          test -z "$(gofmt -l internal/app internal/system)"
+          git diff --check
+      - name: Commit patch to fix branch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix Windows amd64 regression tests [hotfix-applied]"
+          git push origin HEAD:fix/windows-amd64-tests
